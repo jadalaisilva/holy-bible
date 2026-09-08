@@ -22,7 +22,7 @@ import androidx.core.view.WindowCompat
 import com.materialkolor.rememberDynamicColorScheme
 
 enum class ThemeMode(val displayNameEs: String, val displayNameEn: String) {
-    SYSTEM("Seguir sistema", "Follow system"),
+    SYSTEM("Sistema", "System"),
     DARK("Oscuro", "Dark"),
     LIGHT("Claro", "Light")
 }

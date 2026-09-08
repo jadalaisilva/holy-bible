@@ -264,6 +264,7 @@ fun BookmarksScreen(
                                 SwipeableBookmarkItem(
                                     bookmark = bookmark,
                                     highlightColorHex = highlightColorHex,
+                                    currentLanguage = currentLanguage,
                                     onRequestDelete = {
                                         itemPendingDeletionBookmark = bookmark
                                     },
@@ -325,6 +326,7 @@ fun BookmarksScreen(
                             items(readingHistory, key = { it.id }) { historyItem ->
                                 HistoryTimelineItem(
                                     historyItem = historyItem,
+                                    currentLanguage = currentLanguage,
                                     onClick = {
                                         onNavigateToVerse(historyItem.bookId, historyItem.chapterNumber, null)
                                     },
@@ -399,7 +401,7 @@ fun BookmarksScreen(
             },
             text = {
                 Text(
-                    text = if (isEn) "Do you want to delete bookmark for $verseRef?" else "¿Deseas eliminar el marcador de $verseRef?",
+                    text = if (isEn) "Do you want to delete the bookmark for $verseRef?" else "¿Desea eliminar el marcador de $verseRef?",
                     style = MaterialTheme.typography.bodyMedium
                 )
             },
@@ -448,7 +450,7 @@ fun BookmarksScreen(
             },
             text = {
                 Text(
-                    text = if (isEn) "Do you want to remove ${historyToDelete.bookName} ${historyToDelete.chapterNumber} from history?" else "¿Deseas eliminar ${historyToDelete.bookName} ${historyToDelete.chapterNumber} del historial?",
+                    text = if (isEn) "Do you want to remove ${historyToDelete.bookName} ${historyToDelete.chapterNumber} from history?" else "¿Desea eliminar ${historyToDelete.bookName} ${historyToDelete.chapterNumber} del historial?",
                     style = MaterialTheme.typography.bodyMedium
                 )
             },
@@ -534,11 +536,13 @@ fun BookmarksScreen(
 fun SwipeableBookmarkItem(
     bookmark: BookmarkEntity,
     highlightColorHex: String? = null,
+    currentLanguage: AppLanguage = AppLanguage.SPANISH,
     onRequestDelete: () -> Unit,
     onClick: () -> Unit,
     onEdit: () -> Unit,
     onShare: () -> Unit
 ) {
+    val isEn = currentLanguage == AppLanguage.ENGLISH
     val dismissState = rememberSwipeToDismissBoxState(
         positionalThreshold = { totalDistance -> totalDistance * 0.5f },
         confirmValueChange = { value ->
@@ -581,7 +585,7 @@ fun SwipeableBookmarkItem(
             ) {
                 Icon(
                     imageVector = Icons.Default.Delete,
-                    contentDescription = "Eliminar marcador",
+                    contentDescription = if (isEn) "Delete bookmark" else "Eliminar marcador",
                     tint = iconTint,
                     modifier = Modifier.size(24.dp)
                 )
@@ -612,10 +616,13 @@ fun SwipeableBookmarkItem(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
+                            val rawBookName = bookmark.bookName
+                            val bookId = (bookmark.verseId / 1000000).toInt()
+                            val localizedBook = AppStrings.getLocalizedBookName(bookId, rawBookName, isEn)
                             val verseRef = if (bookmark.verseEndNumber > bookmark.verseNumber) {
-                                "${bookmark.bookName} ${bookmark.chapterNumber}:${bookmark.verseNumber}-${bookmark.verseEndNumber}"
+                                "$localizedBook ${bookmark.chapterNumber}:${bookmark.verseNumber}-${bookmark.verseEndNumber}"
                             } else {
-                                "${bookmark.bookName} ${bookmark.chapterNumber}:${bookmark.verseNumber}"
+                                "$localizedBook ${bookmark.chapterNumber}:${bookmark.verseNumber}"
                             }
                             Text(
                                 text = verseRef,
@@ -630,7 +637,7 @@ fun SwipeableBookmarkItem(
                                 IconButton(onClick = { showMenu = true }) {
                                     Icon(
                                         imageVector = Icons.Default.MoreVert,
-                                        contentDescription = "Opciones",
+                                        contentDescription = if (isEn) "Options" else "Opciones",
                                         tint = MaterialTheme.colorScheme.outline
                                     )
                                 }
@@ -639,7 +646,7 @@ fun SwipeableBookmarkItem(
                                     onDismissRequest = { showMenu = false }
                                 ) {
                                     androidx.compose.material3.DropdownMenuItem(
-                                        text = { Text("Editar nota") },
+                                        text = { Text(if (isEn) "Edit note" else "Editar nota") },
                                         leadingIcon = {
                                             Icon(
                                                 imageVector = Icons.Default.Edit,
@@ -652,7 +659,7 @@ fun SwipeableBookmarkItem(
                                         }
                                     )
                                     androidx.compose.material3.DropdownMenuItem(
-                                        text = { Text("Compartir") },
+                                        text = { Text(if (isEn) "Share" else "Compartir") },
                                         leadingIcon = {
                                             Icon(
                                                 imageVector = Icons.Default.Share,
@@ -667,7 +674,7 @@ fun SwipeableBookmarkItem(
                                     androidx.compose.material3.DropdownMenuItem(
                                         text = {
                                             Text(
-                                                "Eliminar",
+                                                if (isEn) "Delete" else "Eliminar",
                                                 color = MaterialTheme.colorScheme.error
                                             )
                                         },
@@ -734,9 +741,11 @@ fun SwipeableBookmarkItem(
 @Composable
 fun HistoryTimelineItem(
     historyItem: com.jadalai.reinavalera1960.data.local.entity.ReadingHistoryEntity,
+    currentLanguage: AppLanguage = AppLanguage.SPANISH,
     onClick: () -> Unit,
     onRequestDelete: () -> Unit
 ) {
+    val isEn = currentLanguage == AppLanguage.ENGLISH
     val dismissState = rememberSwipeToDismissBoxState(
         positionalThreshold = { totalDistance -> totalDistance * 0.5f },
         confirmValueChange = { value ->
@@ -768,7 +777,7 @@ fun HistoryTimelineItem(
             ) {
                 Icon(
                     imageVector = Icons.Default.Delete,
-                    contentDescription = "Eliminar del historial",
+                    contentDescription = if (isEn) "Remove from history" else "Eliminar del historial",
                     tint = iconTint,
                     modifier = Modifier.size(24.dp)
                 )
@@ -809,8 +818,9 @@ fun HistoryTimelineItem(
                     }
 
                     Column(modifier = Modifier.weight(1f)) {
+                        val localizedBook = AppStrings.getLocalizedBookName(historyItem.bookId, historyItem.bookName, isEn)
                         Text(
-                            text = "${historyItem.bookName} ${historyItem.chapterNumber}",
+                            text = "$localizedBook ${historyItem.chapterNumber}",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface
@@ -821,7 +831,7 @@ fun HistoryTimelineItem(
                             sdf.format(Date(historyItem.timestampRead))
                         }
                         Text(
-                            text = "Leído: $dateTimeString",
+                            text = if (isEn) "Read: $dateTimeString" else "Leído: $dateTimeString",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.outline
                         )
@@ -832,7 +842,7 @@ fun HistoryTimelineItem(
                         IconButton(onClick = { showHistoryMenu = true }) {
                             Icon(
                                 imageVector = Icons.Default.MoreVert,
-                                contentDescription = "Opciones",
+                                contentDescription = if (isEn) "Options" else "Opciones",
                                 tint = MaterialTheme.colorScheme.outline,
                                 modifier = Modifier.size(20.dp)
                             )
@@ -844,7 +854,7 @@ fun HistoryTimelineItem(
                             androidx.compose.material3.DropdownMenuItem(
                                 text = {
                                     Text(
-                                        "Eliminar del historial",
+                                        if (isEn) "Remove from history" else "Eliminar del historial",
                                         color = MaterialTheme.colorScheme.error
                                     )
                                 },

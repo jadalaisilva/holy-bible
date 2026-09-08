@@ -141,12 +141,12 @@ object AppStrings {
     }
 
     fun appearanceSection(lang: AppLanguage) = when (resolveLanguage(lang)) {
-        AppLanguage.ENGLISH -> "Appearance & Reading"
+        AppLanguage.ENGLISH -> "Appearance"
         else -> "Apariencia"
     }
 
     fun appTheme(lang: AppLanguage) = when (resolveLanguage(lang)) {
-        AppLanguage.ENGLISH -> "App Theme"
+        AppLanguage.ENGLISH -> "App theme"
         else -> "Tema de la app"
     }
 

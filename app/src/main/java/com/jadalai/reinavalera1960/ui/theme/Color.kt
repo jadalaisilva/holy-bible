@@ -11,7 +11,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 
-// Light default palette (Memodream / Material 3 Expressive)
+// Light default palette
 val Purple40 = Color(0xFF644ABB)
 val PurpleGrey40 = Color(0xFF625B71)
 val Pink40 = Color(0xFF7D5260)
@@ -21,7 +21,7 @@ val LightSurfaceVariant = Color(0xFFE5DBF0)
 val LightSurfaceContainer = Color(0xFFECE4F5)
 val LightSurfaceContainerHigh = Color(0xFFDFD4EC)
 
-// Dark default palette (Memodream / Material 3 Expressive)
+// Dark default palette
 val Purple80 = Color(0xFFD1BCFF)
 val PurpleGrey80 = Color(0xFFCCC2DC)
 val Pink80 = Color(0xFFEFB8C8)

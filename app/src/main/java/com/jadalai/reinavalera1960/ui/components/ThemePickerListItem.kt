@@ -43,7 +43,7 @@ fun ThemePickerListItem(
         mapOf(
             ThemeMode.SYSTEM to Pair(
                 Icons.Default.BrightnessAuto,
-                if (isEn) "System default" else "Predeterminado"
+                if (isEn) "System" else "Sistema"
             ),
             ThemeMode.LIGHT to Pair(
                 Icons.Default.LightMode,
