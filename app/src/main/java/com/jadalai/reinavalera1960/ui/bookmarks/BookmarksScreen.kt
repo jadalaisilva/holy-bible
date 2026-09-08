@@ -33,6 +33,7 @@ import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.HistoryEdu
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.outlined.Bookmarks
 import androidx.compose.material.icons.outlined.History
@@ -539,11 +540,11 @@ fun SwipeableBookmarkItem(
     onShare: () -> Unit
 ) {
     val dismissState = rememberSwipeToDismissBoxState(
-        positionalThreshold = { totalDistance -> totalDistance * 0.4f },
+        positionalThreshold = { totalDistance -> totalDistance * 0.5f },
         confirmValueChange = { value ->
             if (value == SwipeToDismissBoxValue.EndToStart) {
                 onRequestDelete()
-                false // Do not immediately remove until confirmed in modal
+                false
             } else {
                 false
             }
@@ -566,19 +567,23 @@ fun SwipeableBookmarkItem(
         enableDismissFromStartToEnd = false,
         enableDismissFromEndToStart = true,
         backgroundContent = {
-            val color = MaterialTheme.colorScheme.errorContainer
+            val isDismissing = dismissState.targetValue == SwipeToDismissBoxValue.EndToStart
+            val containerColor = if (isDismissing) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.6f)
+            val iconTint = if (isDismissing) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.7f)
+
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .clip(RoundedCornerShape(20.dp))
-                    .background(color)
-                    .padding(horizontal = 20.dp),
+                    .background(containerColor)
+                    .padding(horizontal = 24.dp),
                 contentAlignment = Alignment.CenterEnd
             ) {
                 Icon(
                     imageVector = Icons.Default.Delete,
                     contentDescription = "Eliminar marcador",
-                    tint = MaterialTheme.colorScheme.onErrorContainer
+                    tint = iconTint,
+                    modifier = Modifier.size(24.dp)
                 )
             }
         },
@@ -597,91 +602,132 @@ fun SwipeableBookmarkItem(
                         .fillMaxWidth()
                         .clickable { onClick() }
                 ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
                     ) {
-                        val verseRef = if (bookmark.verseEndNumber > bookmark.verseNumber) {
-                            "${bookmark.bookName} ${bookmark.chapterNumber}:${bookmark.verseNumber}-${bookmark.verseEndNumber}"
-                        } else {
-                            "${bookmark.bookName} ${bookmark.chapterNumber}:${bookmark.verseNumber}"
-                        }
-                        Text(
-                            text = verseRef,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.weight(1f)
-                        )
-
                         Row(
-                            horizontalArrangement = Arrangement.spacedBy(2.dp),
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            IconButton(onClick = onEdit) {
-                                Icon(
-                                    imageVector = Icons.Default.Edit,
-                                    contentDescription = "Editar nota",
-                                    tint = MaterialTheme.colorScheme.primary
-                                )
+                            val verseRef = if (bookmark.verseEndNumber > bookmark.verseNumber) {
+                                "${bookmark.bookName} ${bookmark.chapterNumber}:${bookmark.verseNumber}-${bookmark.verseEndNumber}"
+                            } else {
+                                "${bookmark.bookName} ${bookmark.chapterNumber}:${bookmark.verseNumber}"
                             }
-
-                            IconButton(onClick = onShare) {
-                                Icon(
-                                    imageVector = Icons.Default.Share,
-                                    contentDescription = "Compartir",
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "\"${bookmark.verseText}\"",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-
-                    if (!bookmark.customNote.isNullOrBlank()) {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(MaterialTheme.colorScheme.surfaceVariant)
-                                .clickable { onEdit() }
-                                .padding(8.dp)
-                        ) {
                             Text(
-                                text = "Nota: ${bookmark.customNote}",
-                                style = MaterialTheme.typography.bodySmall,
-                                fontStyle = FontStyle.Italic,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                text = verseRef,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.weight(1f)
                             )
-                        }
-                    }
 
-                    Spacer(modifier = Modifier.height(8.dp))
-                    val dateString = remember(bookmark.timestampAdded) {
-                        val sdf = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
-                        sdf.format(Date(bookmark.timestampAdded))
+                            var showMenu by remember { mutableStateOf(false) }
+                            Box {
+                                IconButton(onClick = { showMenu = true }) {
+                                    Icon(
+                                        imageVector = Icons.Default.MoreVert,
+                                        contentDescription = "Opciones",
+                                        tint = MaterialTheme.colorScheme.outline
+                                    )
+                                }
+                                androidx.compose.material3.DropdownMenu(
+                                    expanded = showMenu,
+                                    onDismissRequest = { showMenu = false }
+                                ) {
+                                    androidx.compose.material3.DropdownMenuItem(
+                                        text = { Text("Editar nota") },
+                                        leadingIcon = {
+                                            Icon(
+                                                imageVector = Icons.Default.Edit,
+                                                contentDescription = null
+                                            )
+                                        },
+                                        onClick = {
+                                            showMenu = false
+                                            onEdit()
+                                        }
+                                    )
+                                    androidx.compose.material3.DropdownMenuItem(
+                                        text = { Text("Compartir") },
+                                        leadingIcon = {
+                                            Icon(
+                                                imageVector = Icons.Default.Share,
+                                                contentDescription = null
+                                            )
+                                        },
+                                        onClick = {
+                                            showMenu = false
+                                            onShare()
+                                        }
+                                    )
+                                    androidx.compose.material3.DropdownMenuItem(
+                                        text = {
+                                            Text(
+                                                "Eliminar",
+                                                color = MaterialTheme.colorScheme.error
+                                            )
+                                        },
+                                        leadingIcon = {
+                                            Icon(
+                                                imageVector = Icons.Default.Delete,
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.error
+                                            )
+                                        },
+                                        onClick = {
+                                            showMenu = false
+                                            onRequestDelete()
+                                        }
+                                    )
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "\"${bookmark.verseText}\"",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+
+                        if (!bookmark.customNote.isNullOrBlank()) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                                    .clickable { onEdit() }
+                                    .padding(8.dp)
+                            ) {
+                                Text(
+                                    text = "Nota: ${bookmark.customNote}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontStyle = FontStyle.Italic,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+                        val dateString = remember(bookmark.timestampAdded) {
+                            val sdf = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
+                            sdf.format(Date(bookmark.timestampAdded))
+                        }
+                        Text(
+                            text = "Guardado el $dateString",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.outline
+                        )
                     }
-                    Text(
-                        text = "Guardado el $dateString",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.outline
-                    )
                 }
             }
         }
-    }
-)
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -692,11 +738,11 @@ fun HistoryTimelineItem(
     onRequestDelete: () -> Unit
 ) {
     val dismissState = rememberSwipeToDismissBoxState(
-        positionalThreshold = { totalDistance -> totalDistance * 0.4f },
+        positionalThreshold = { totalDistance -> totalDistance * 0.5f },
         confirmValueChange = { value ->
             if (value == SwipeToDismissBoxValue.EndToStart) {
                 onRequestDelete()
-                false // Do not immediately remove until confirmed in modal
+                false
             } else {
                 false
             }
@@ -708,19 +754,23 @@ fun HistoryTimelineItem(
         enableDismissFromStartToEnd = false,
         enableDismissFromEndToStart = true,
         backgroundContent = {
-            val color = MaterialTheme.colorScheme.errorContainer
+            val isDismissing = dismissState.targetValue == SwipeToDismissBoxValue.EndToStart
+            val containerColor = if (isDismissing) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.6f)
+            val iconTint = if (isDismissing) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.7f)
+
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .clip(RoundedCornerShape(20.dp))
-                    .background(color)
-                    .padding(horizontal = 20.dp),
+                    .background(containerColor)
+                    .padding(horizontal = 24.dp),
                 contentAlignment = Alignment.CenterEnd
             ) {
                 Icon(
                     imageVector = Icons.Default.Delete,
                     contentDescription = "Eliminar del historial",
-                    tint = MaterialTheme.colorScheme.onErrorContainer
+                    tint = iconTint,
+                    modifier = Modifier.size(24.dp)
                 )
             }
         },
@@ -775,6 +825,42 @@ fun HistoryTimelineItem(
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.outline
                         )
+                    }
+
+                    var showHistoryMenu by remember { mutableStateOf(false) }
+                    Box {
+                        IconButton(onClick = { showHistoryMenu = true }) {
+                            Icon(
+                                imageVector = Icons.Default.MoreVert,
+                                contentDescription = "Opciones",
+                                tint = MaterialTheme.colorScheme.outline,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                        androidx.compose.material3.DropdownMenu(
+                            expanded = showHistoryMenu,
+                            onDismissRequest = { showHistoryMenu = false }
+                        ) {
+                            androidx.compose.material3.DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        "Eliminar del historial",
+                                        color = MaterialTheme.colorScheme.error
+                                    )
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.Delete,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.error
+                                    )
+                                },
+                                onClick = {
+                                    showHistoryMenu = false
+                                    onRequestDelete()
+                                }
+                            )
+                        }
                     }
                 }
             }
