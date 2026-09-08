@@ -575,35 +575,28 @@ fun SwipeableBookmarkItem(
                     .padding(horizontal = 20.dp),
                 contentAlignment = Alignment.CenterEnd
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text(
-                        text = "Eliminar",
-                        color = MaterialTheme.colorScheme.onErrorContainer,
-                        fontWeight = FontWeight.Bold,
-                        style = MaterialTheme.typography.labelLarge
-                    )
-                    Icon(
-                        imageVector = Icons.Default.Delete,
-                        contentDescription = "Eliminar marcador",
-                        tint = MaterialTheme.colorScheme.onErrorContainer
-                    )
-                }
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = "Eliminar marcador",
+                    tint = MaterialTheme.colorScheme.onErrorContainer
+                )
             }
         },
         content = {
-            ElevatedCard(
+            Surface(
                 shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.elevatedCardColors(
-                    containerColor = itemContainerColor
-                ),
-                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { onClick() }
+                color = MaterialTheme.colorScheme.surface
             ) {
+                ElevatedCard(
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.elevatedCardColors(
+                        containerColor = itemContainerColor
+                    ),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onClick() }
+                ) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -644,14 +637,6 @@ fun SwipeableBookmarkItem(
                                     imageVector = Icons.Default.Share,
                                     contentDescription = "Compartir",
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-
-                            IconButton(onClick = onRequestDelete) {
-                                Icon(
-                                    imageVector = Icons.Default.Delete,
-                                    contentDescription = "Eliminar",
-                                    tint = MaterialTheme.colorScheme.outline
                                 )
                             }
                         }
@@ -695,7 +680,8 @@ fun SwipeableBookmarkItem(
                 }
             }
         }
-    )
+    }
+)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -731,22 +717,11 @@ fun HistoryTimelineItem(
                     .padding(horizontal = 20.dp),
                 contentAlignment = Alignment.CenterEnd
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text(
-                        text = "Eliminar",
-                        color = MaterialTheme.colorScheme.onErrorContainer,
-                        fontWeight = FontWeight.Bold,
-                        style = MaterialTheme.typography.labelLarge
-                    )
-                    Icon(
-                        imageVector = Icons.Default.Delete,
-                        contentDescription = "Eliminar del historial",
-                        tint = MaterialTheme.colorScheme.onErrorContainer
-                    )
-                }
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = "Eliminar del historial",
+                    tint = MaterialTheme.colorScheme.onErrorContainer
+                )
             }
         },
         content = {
@@ -799,15 +774,6 @@ fun HistoryTimelineItem(
                             text = "Leído: $dateTimeString",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.outline
-                        )
-                    }
-
-                    IconButton(onClick = onRequestDelete) {
-                        Icon(
-                            imageVector = Icons.Default.Delete,
-                            contentDescription = "Eliminar",
-                            tint = MaterialTheme.colorScheme.outline,
-                            modifier = Modifier.size(20.dp)
                         )
                     }
                 }

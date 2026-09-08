@@ -97,9 +97,9 @@ import com.jadalai.reinavalera1960.ui.theme.ScriptureFont
 import com.jadalai.reinavalera1960.ui.theme.ThemeMode
 
 enum class AppLanguage(val labelEs: String, val labelEn: String, val code: String) {
-    SYSTEM("Predeterminado del sistema", "System default", "system"),
+    SYSTEM("Sistema", "System", "system"),
     SPANISH("Español", "Spanish", "es"),
-    ENGLISH("English", "English", "en")
+    ENGLISH("Inglés", "English", "en")
 }
 
 enum class BibleTranslation(val labelEs: String, val labelEn: String, val code: String, val descEs: String, val descEn: String) {

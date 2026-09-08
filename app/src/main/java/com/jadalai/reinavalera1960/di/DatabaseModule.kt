@@ -113,22 +113,6 @@ object DatabaseModule {
 
             override fun onOpen(db: SupportSQLiteDatabase) {
                 super.onOpen(db)
-                CoroutineScope(Dispatchers.IO).launch {
-                    try {
-                        val cursor = db.query("SELECT COUNT(*) FROM verses WHERE translation = 'kjv'")
-                        var count = 0
-                        if (cursor.moveToFirst()) {
-                            count = cursor.getInt(0)
-                        }
-                        cursor.close()
-                        Log.d("DatabaseModule", "onOpen: KJV verses count = $count")
-                        if (count < 30000) {
-                            populateFromKjvStreaming(context, db)
-                        }
-                    } catch (e: Exception) {
-                        Log.e("DatabaseModule", "onOpen error", e)
-                    }
-                }
             }
         })
 
