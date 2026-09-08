@@ -229,7 +229,6 @@ fun MainAppShell(
                     }
                 }
 
-                // Compact screen Floating Pill Bottom Navigation Toolbar overlay (Tomato / M3 Expressive style)
                 if (!isExpanded) {
                     val isBottomBarVisible = !isReaderSearchActive && (selectedItemIndex != 1 || isReaderScrollingUp)
                     androidx.compose.animation.AnimatedVisibility(
@@ -251,8 +250,8 @@ fun MainAppShell(
                                 .navigationBarsPadding()
                                 .padding(horizontal = 20.dp, vertical = 14.dp),
                             shape = RoundedCornerShape(36.dp),
-                            color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                            shadowElevation = 8.dp,
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                            shadowElevation = 6.dp,
                             tonalElevation = 4.dp
                         ) {
                             Row(
@@ -263,12 +262,12 @@ fun MainAppShell(
                                 navItems.forEachIndexed { index, item ->
                                     val isSelected = selectedItemIndex == index
                                     val pillBgColor by animateColorAsState(
-                                        targetValue = if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
+                                        targetValue = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent,
                                         animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
                                         label = "pillBgColor"
                                     )
                                     val contentColor by animateColorAsState(
-                                        targetValue = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                                        targetValue = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onPrimaryContainer,
                                         animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
                                         label = "contentColor"
                                     )

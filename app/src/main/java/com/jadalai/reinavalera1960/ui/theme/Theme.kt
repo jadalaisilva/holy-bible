@@ -129,12 +129,25 @@ fun BibleAppTheme(
     }
 
     val context = LocalContext.current
-    val baseColorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            if (isDark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+    val colorScheme = if (dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        val systemDynamic = if (isDark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+        if (blackTheme && isDark) {
+            systemDynamic.copy(
+                background = Color.Black,
+                surface = Color.Black,
+                surfaceContainer = Color(0xFF121212),
+                surfaceContainerHigh = Color(0xFF1E1E1E)
+            )
+        } else {
+            systemDynamic
         }
-        isDark -> DefaultDarkColorScheme
-        else -> DefaultLightColorScheme
+    } else {
+        rememberDynamicColorScheme(
+            seedColor = seedColor,
+            isDark = isDark,
+            isAmoled = blackTheme && isDark,
+            style = com.materialkolor.PaletteStyle.Vibrant
+        )
     }
 
     val view = LocalView.current
@@ -149,32 +162,13 @@ fun BibleAppTheme(
         }
     }
 
-    val effectiveSeedColor = if (dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-        baseColorScheme.primary
-    } else {
-        seedColor
-    }
-
-    val dynamicColorScheme = rememberDynamicColorScheme(
-        seedColor = effectiveSeedColor,
-        isDark = isDark,
-        isAmoled = blackTheme && isDark,
-        style = com.materialkolor.PaletteStyle.Vibrant
-    )
-
-    val finalScheme = if (dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !(blackTheme && isDark)) {
-        baseColorScheme
-    } else {
-        dynamicColorScheme
-    }
-
     CompositionLocalProvider(
         LocalAppFonts provides AppFonts(),
         LocalScriptureFont provides scriptureFont,
         LocalReadingBackgroundTheme provides readingBackgroundTheme
     ) {
         MaterialExpressiveTheme(
-            colorScheme = finalScheme,
+            colorScheme = colorScheme,
             typography = Typography,
             motionScheme = MotionScheme.expressive(),
             content = content
