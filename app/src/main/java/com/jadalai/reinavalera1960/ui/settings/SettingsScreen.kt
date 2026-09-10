@@ -139,13 +139,13 @@ fun SettingsScreen(
         targetState = activeSubscreen,
         transitionSpec = {
             if (targetState == SettingsSubscreen.MAIN) {
-                // Navigating back
-                (slideInHorizontally { -it / 3 } + fadeIn(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)))
-                    .togetherWith(slideOutHorizontally { it } + fadeOut(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)))
+                // Predictive back transition
+                (slideInHorizontally(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)) { -it / 3 } + fadeIn(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)))
+                    .togetherWith(slideOutHorizontally(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)) { it } + fadeOut(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)))
             } else {
-                // Navigating forward into subscreen
-                (slideInHorizontally { it } + fadeIn(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)))
-                    .togetherWith(slideOutHorizontally { -it / 3 } + fadeOut(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)))
+                // Forward navigation transition
+                (slideInHorizontally(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)) { it } + fadeIn(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)))
+                    .togetherWith(slideOutHorizontally(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)) { -it / 3 } + fadeOut(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)))
             }
         },
         label = "subscreenTransition"
@@ -244,7 +244,7 @@ fun SettingsMainList(
             // Section: Appearance
             item {
                 Text(
-                    text = if (isEn) "Appearance" else "Apariencia",
+                    text = AppStrings.appearanceSection(currentLanguage),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onBackground,
@@ -257,7 +257,7 @@ fun SettingsMainList(
                     themeMode = themeMode,
                     items = 3,
                     index = 0,
-                    isEn = isEn,
+                    currentLanguage = currentLanguage,
                     onThemeChange = onThemeModeChange
                 )
             }
@@ -285,9 +285,9 @@ fun SettingsMainList(
                             contentDescription = null
                         )
                     },
-                    headlineContent = { Text(if (isEn) "Pure Black AMOLED" else "Negro Puro AMOLED") },
+                    headlineContent = { Text(AppStrings.pureBlackTheme(currentLanguage)) },
                     supportingContent = {
-                        Text(if (isEn) "Deep black background on dark theme for OLED displays" else "Fondo negro profundo en tema oscuro para pantallas OLED")
+                        Text(AppStrings.pureBlackThemeDesc(currentLanguage))
                     },
                     trailingContent = {
                         Switch(
@@ -530,7 +530,7 @@ fun ReaderFormattingSubscreen(
             LargeTopAppBar(
                 title = {
                     Text(
-                        text = if (isEn) "Reader Formatting" else "Formato de Lectura",
+                        text = AppStrings.readerFormattingTitle(currentLanguage),
                         style = com.jadalai.reinavalera1960.ui.theme.LocalAppFonts.current.topBarTitle,
                         color = MaterialTheme.colorScheme.onBackground
                     )
@@ -566,7 +566,7 @@ fun ReaderFormattingSubscreen(
         ) {
             item {
                 Text(
-                    text = if (isEn) "Typography & Themes" else "Tipografía y Temas",
+                    text = AppStrings.typographyAndThemes(currentLanguage),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onBackground,
@@ -626,7 +626,7 @@ fun ReaderFormattingSubscreen(
             item {
                 Spacer(modifier = Modifier.height(10.dp))
                 Text(
-                    text = if (isEn) "Layout & Font Styling" else "Diseño y Estilo",
+                    text = AppStrings.layoutAndFontStyling(currentLanguage),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onBackground,
@@ -703,10 +703,10 @@ fun ReaderFormattingSubscreen(
                 )
             }
 
-            // Section 2: Reading & Behavior inside Reader Subscreen
+            // Section 2: Reading and behavior inside reader subscreen
             item {
                 Text(
-                    text = if (isEn) "Reading and behavior" else "Lectura y comportamiento",
+                    text = AppStrings.readingAndBehavior(currentLanguage),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onBackground,
@@ -735,11 +735,11 @@ fun ReaderFormattingSubscreen(
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    text = if (isEn) "Keep screen always on" else "Pantalla siempre encendida",
+                                    text = AppStrings.keepScreenOn(currentLanguage),
                                     fontWeight = FontWeight.SemiBold
                                 )
                                 Text(
-                                    text = if (isEn) "Screen will never sleep during reading" else "La pantalla nunca se apagará si estás en lectura",
+                                    text = AppStrings.keepScreenOnDesc(currentLanguage),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -758,11 +758,11 @@ fun ReaderFormattingSubscreen(
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    text = if (isEn) "Show verse highlights" else "Mostrar subrayados",
+                                    text = AppStrings.showVerseHighlights(currentLanguage),
                                     fontWeight = FontWeight.SemiBold
                                 )
                                 Text(
-                                    text = if (isEn) "Render highlight colors on verses" else "Mostrar colores en versículos subrayados",
+                                    text = AppStrings.showVerseHighlightsDesc(currentLanguage),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -781,11 +781,11 @@ fun ReaderFormattingSubscreen(
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    text = if (isEn) "Show bookmark badges" else "Mostrar marcadores",
+                                    text = AppStrings.showBookmarkBadges(currentLanguage),
                                     fontWeight = FontWeight.SemiBold
                                 )
                                 Text(
-                                    text = if (isEn) "Show badge icon on bookmarked verses" else "Mostrar icono en versículos marcados",
+                                    text = AppStrings.showBookmarkBadgesDesc(currentLanguage),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -804,11 +804,11 @@ fun ReaderFormattingSubscreen(
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    text = if (isEn) "Auto-mark as read" else "Marcar como leído automáticamente",
+                                    text = AppStrings.autoMarkAsRead(currentLanguage),
                                     fontWeight = FontWeight.SemiBold
                                 )
                                 Text(
-                                    text = if (isEn) "When reaching the end of a chapter, it will be marked as read" else "Al llegar al final de un capítulo, se marcará como leído",
+                                    text = AppStrings.autoMarkAsReadDesc(currentLanguage),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
