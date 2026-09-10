@@ -67,10 +67,10 @@ enum class ReadingBackgroundTheme(
     val textColor: Color?
 ) {
     FOLLOW_APP_THEME("Seguir tema de la app", "Follow app theme", null, null),
-    PURE_WHITE("Blanco Puro", "Pure White", Color(0xFFFFFFFF), Color(0xFF111111)),
-    PURE_BLACK("Negro Puro OLED", "Pure Black OLED", Color(0xFF000000), Color(0xFFFFFFFF)),
-    WARM_SEPIA("Sepia Papel", "Warm Sepia Paper", Color(0xFFFBF0D9), Color(0xFF3E2723)),
-    NIGHT_CHARCOAL("Carbón Nocturno", "Night Charcoal", Color(0xFF1E1E1E), Color(0xFFE0E0E0))
+    PURE_WHITE("Blanco", "White", Color(0xFFFFFFFF), Color(0xFF111111)),
+    PURE_BLACK("Negro", "Black", Color(0xFF000000), Color(0xFFFFFFFF)),
+    WARM_SEPIA("Sepia", "Sepia", Color(0xFFFBF0D9), Color(0xFF3E2723)),
+    NIGHT_CHARCOAL("Carbón", "Charcoal", Color(0xFF1E1E1E), Color(0xFFE0E0E0))
 }
 
 val LocalScriptureFont = compositionLocalOf { ScriptureFont.LORA }

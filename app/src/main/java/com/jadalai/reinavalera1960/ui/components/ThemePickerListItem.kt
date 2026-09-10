@@ -25,6 +25,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastForEachIndexed
+import com.jadalai.reinavalera1960.ui.i18n.AppStrings
+import com.jadalai.reinavalera1960.ui.settings.AppLanguage
 import com.jadalai.reinavalera1960.ui.theme.BibleShapeDefaults.segmentedListItemShape
 import com.jadalai.reinavalera1960.ui.theme.CustomColors.listItemColors
 import com.jadalai.reinavalera1960.ui.theme.ThemeMode
@@ -35,23 +37,23 @@ fun ThemePickerListItem(
     themeMode: ThemeMode,
     items: Int,
     index: Int,
-    isEn: Boolean,
+    currentLanguage: AppLanguage,
     onThemeChange: (ThemeMode) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val themeMap: Map<ThemeMode, Pair<ImageVector, String>> = remember(isEn) {
+    val themeMap: Map<ThemeMode, Pair<ImageVector, String>> = remember(currentLanguage) {
         mapOf(
             ThemeMode.SYSTEM to Pair(
                 Icons.Default.BrightnessAuto,
-                if (isEn) "System" else "Sistema"
+                AppStrings.themeSystem(currentLanguage)
             ),
             ThemeMode.LIGHT to Pair(
                 Icons.Default.LightMode,
-                if (isEn) "Light" else "Claro"
+                AppStrings.themeLight(currentLanguage)
             ),
             ThemeMode.DARK to Pair(
                 Icons.Default.DarkMode,
-                if (isEn) "Dark" else "Oscuro"
+                AppStrings.themeDark(currentLanguage)
             )
         )
     }
@@ -65,7 +67,7 @@ fun ThemePickerListItem(
                 )
             }
         },
-        headlineContent = { Text(if (isEn) "Theme" else "Tema") },
+        headlineContent = { Text(AppStrings.theme(currentLanguage)) },
         supportingContent = {
             val options = themeMap.toList()
             val selectedIndex = options.indexOfFirst { it.first == themeMode }

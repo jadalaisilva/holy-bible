@@ -156,8 +156,8 @@ object AppStrings {
     }
 
     fun readingBackground(lang: AppLanguage) = when (resolveLanguage(lang)) {
-        AppLanguage.ENGLISH -> "Background & text"
-        else -> "Fondo y color"
+        AppLanguage.ENGLISH -> "Background and text"
+        else -> "Fondo y texto"
     }
 
     fun scriptureFont(lang: AppLanguage) = when (resolveLanguage(lang)) {
@@ -178,6 +178,96 @@ object AppStrings {
     fun bibleVersion(lang: AppLanguage) = when (resolveLanguage(lang)) {
         AppLanguage.ENGLISH -> "Bible version"
         else -> "Versión bíblica"
+    }
+
+    fun pureBlackTheme(lang: AppLanguage) = when (resolveLanguage(lang)) {
+        AppLanguage.ENGLISH -> "Pure black theme"
+        else -> "Tema negro puro"
+    }
+
+    fun pureBlackThemeDesc(lang: AppLanguage) = when (resolveLanguage(lang)) {
+        AppLanguage.ENGLISH -> "Use a pure black background color on dark theme"
+        else -> "Use un color de fondo negro puro en modo oscuro"
+    }
+
+    fun typographyAndThemes(lang: AppLanguage) = when (resolveLanguage(lang)) {
+        AppLanguage.ENGLISH -> "Typography and themes"
+        else -> "Tipografía y temas"
+    }
+
+    fun layoutAndFontStyling(lang: AppLanguage) = when (resolveLanguage(lang)) {
+        AppLanguage.ENGLISH -> "Layout and font styling"
+        else -> "Diseño y estilo"
+    }
+
+    fun readingAndBehavior(lang: AppLanguage) = when (resolveLanguage(lang)) {
+        AppLanguage.ENGLISH -> "Reading and behavior"
+        else -> "Lectura y comportamiento"
+    }
+
+    fun keepScreenOn(lang: AppLanguage) = when (resolveLanguage(lang)) {
+        AppLanguage.ENGLISH -> "Keep screen always on"
+        else -> "Pantalla siempre encendida"
+    }
+
+    fun keepScreenOnDesc(lang: AppLanguage) = when (resolveLanguage(lang)) {
+        AppLanguage.ENGLISH -> "Screen will never sleep during reading"
+        else -> "La pantalla nunca se apagará si estás en lectura"
+    }
+
+    fun showVerseHighlights(lang: AppLanguage) = when (resolveLanguage(lang)) {
+        AppLanguage.ENGLISH -> "Show verse highlights"
+        else -> "Mostrar subrayados"
+    }
+
+    fun showVerseHighlightsDesc(lang: AppLanguage) = when (resolveLanguage(lang)) {
+        AppLanguage.ENGLISH -> "Render highlight colors on verses"
+        else -> "Mostrar colores en versículos subrayados"
+    }
+
+    fun showBookmarkBadges(lang: AppLanguage) = when (resolveLanguage(lang)) {
+        AppLanguage.ENGLISH -> "Show bookmark badges"
+        else -> "Mostrar marcadores"
+    }
+
+    fun showBookmarkBadgesDesc(lang: AppLanguage) = when (resolveLanguage(lang)) {
+        AppLanguage.ENGLISH -> "Show badge icon on bookmarked verses"
+        else -> "Mostrar icono en versículos marcados"
+    }
+
+    fun autoMarkAsRead(lang: AppLanguage) = when (resolveLanguage(lang)) {
+        AppLanguage.ENGLISH -> "Auto-mark as read"
+        else -> "Marcar como leído automáticamente"
+    }
+
+    fun autoMarkAsReadDesc(lang: AppLanguage) = when (resolveLanguage(lang)) {
+        AppLanguage.ENGLISH -> "When reaching the end of a chapter, it will be marked as read"
+        else -> "Al llegar al final de un capítulo, se marcará como leído"
+    }
+
+    fun readerFormattingTitle(lang: AppLanguage) = when (resolveLanguage(lang)) {
+        AppLanguage.ENGLISH -> "Reader Formatting"
+        else -> "Formato de Lectura"
+    }
+
+    fun theme(lang: AppLanguage) = when (resolveLanguage(lang)) {
+        AppLanguage.ENGLISH -> "Theme"
+        else -> "Tema"
+    }
+
+    fun themeSystem(lang: AppLanguage) = when (resolveLanguage(lang)) {
+        AppLanguage.ENGLISH -> "System"
+        else -> "Sistema"
+    }
+
+    fun themeLight(lang: AppLanguage) = when (resolveLanguage(lang)) {
+        AppLanguage.ENGLISH -> "Light"
+        else -> "Claro"
+    }
+
+    fun themeDark(lang: AppLanguage) = when (resolveLanguage(lang)) {
+        AppLanguage.ENGLISH -> "Dark"
+        else -> "Oscuro"
     }
 
     fun aboutSection(lang: AppLanguage) = when (resolveLanguage(lang)) {
