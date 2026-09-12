@@ -44,6 +44,15 @@ class BibleRepository @Inject constructor(
     fun getVersesWithDetailsForChapter(chapterId: Int, translation: String = "rvr1960"): Flow<List<VerseWithDetails>> =
         verseDao.getVersesWithDetailsForChapter(chapterId, translation)
 
+    fun getVersesWithDetailsForRange(
+        bookId: Int,
+        chapterNumber: Int,
+        startVerse: Int,
+        endVerse: Int,
+        translation: String = "rvr1960"
+    ): Flow<List<VerseWithDetails>> =
+        verseDao.getVersesWithDetailsForRange(bookId, chapterNumber, startVerse, endVerse, translation)
+
     suspend fun getVerseById(verseId: Long): VerseEntity? = verseDao.getVerseById(verseId)
 
     suspend fun searchVerses(

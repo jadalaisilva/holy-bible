@@ -125,6 +125,11 @@ object AppStrings {
         else -> "Escuchar audio del capítulo"
     }
 
+    fun readVerseTts(lang: AppLanguage) = when (resolveLanguage(lang)) {
+        AppLanguage.ENGLISH -> "Read out loud (Voice TTS)"
+        else -> "Leer en voz alta (Voz TTS)"
+    }
+
     fun bookmarkRemoved(lang: AppLanguage) = when (resolveLanguage(lang)) {
         AppLanguage.ENGLISH -> "Bookmark removed"
         else -> "Marcador eliminado"

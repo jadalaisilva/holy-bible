@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Lightbulb
+import androidx.compose.material.icons.filled.RecordVoiceOver
 import androidx.compose.material.icons.filled.SelfImprovement
 import androidx.compose.material.icons.filled.Spa
 import androidx.compose.material.icons.filled.VolunteerActivism
@@ -58,16 +59,28 @@ import com.jadalai.reinavalera1960.ui.settings.BibleTranslation
 import com.jadalai.reinavalera1960.ui.theme.GoogleSansFlexTopBarFont
 import java.util.Calendar
 
+import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+
+data class TopicVerseRef(
+    val bookId: Int,
+    val bookNameEs: String,
+    val chapter: Int,
+    val startVerse: Int,
+    val endVerse: Int = startVerse
+) {
+    val displayRefEs: String
+        get() = if (startVerse == endVerse) "$bookNameEs $chapter:$startVerse" else "$bookNameEs $chapter:$startVerse-$endVerse"
+}
+
 data class GuideItem(
+    val id: String,
     val titleEs: String,
     val titleEn: String,
     val icon: ImageVector,
-    val bookId: Int,
-    val bookName: String,
-    val chapterNumber: Int,
-    val verseNumber: Int,
-    val sampleTextEs: String,
-    val sampleTextEn: String
+    val verses: List<TopicVerseRef>
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -84,6 +97,227 @@ fun GuideScreen(
     val isKjv = translation == BibleTranslation.KJV
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
+    var selectedTopic by remember { mutableStateOf<GuideItem?>(null) }
+
+    val loveVerses = remember {
+        listOf(
+            TopicVerseRef(46, "1 Corintios", 13, 4, 5),
+            TopicVerseRef(51, "Colosenses", 3, 14, 14),
+            TopicVerseRef(20, "Proverbios", 3, 3, 4),
+            TopicVerseRef(62, "1 Juan", 4, 19, 19),
+            TopicVerseRef(49, "Efesios", 4, 2, 2),
+            TopicVerseRef(48, "Gálatas", 5, 14, 14),
+            TopicVerseRef(43, "Juan", 14, 15, 15),
+            TopicVerseRef(40, "Mateo", 22, 37, 40),
+            TopicVerseRef(60, "1 Pedro", 4, 8, 8),
+            TopicVerseRef(45, "Romanos", 12, 9, 9),
+            TopicVerseRef(53, "2 Tesalonicenses", 3, 5, 5),
+            TopicVerseRef(45, "Romanos", 12, 10, 10),
+            TopicVerseRef(62, "1 Juan", 4, 12, 12),
+            TopicVerseRef(43, "Juan", 14, 21, 24),
+            TopicVerseRef(62, "1 Juan", 4, 21, 21),
+            TopicVerseRef(43, "Juan", 15, 13, 13),
+            TopicVerseRef(62, "1 Juan", 4, 18, 18),
+            TopicVerseRef(46, "1 Corintios", 13, 13, 13)
+        )
+    }
+
+    val strengthVerses = remember {
+        listOf(
+            TopicVerseRef(2, "Éxodo", 15, 2, 2),
+            TopicVerseRef(5, "Deuteronomio", 31, 6, 6),
+            TopicVerseRef(19, "Salmos", 18, 2, 2),
+            TopicVerseRef(6, "Josué", 1, 9, 9),
+            TopicVerseRef(19, "Salmos", 37, 39, 39),
+            TopicVerseRef(23, "Isaías", 12, 2, 2),
+            TopicVerseRef(19, "Salmos", 46, 1, 1),
+            TopicVerseRef(23, "Isaías", 40, 29, 29),
+            TopicVerseRef(19, "Salmos", 71, 3, 3),
+            TopicVerseRef(23, "Isaías", 41, 10, 10),
+            TopicVerseRef(34, "Nahúm", 1, 7, 7),
+            TopicVerseRef(35, "Habacuc", 3, 19, 19),
+            TopicVerseRef(50, "Filipenses", 4, 13, 13),
+            TopicVerseRef(55, "2 Timoteo", 2, 1, 1),
+            TopicVerseRef(23, "Isaías", 33, 2, 2),
+            TopicVerseRef(6, "Josué", 1, 7, 7),
+            TopicVerseRef(19, "Salmos", 119, 105, 105),
+            TopicVerseRef(55, "2 Timoteo", 1, 7, 7),
+            TopicVerseRef(19, "Salmos", 55, 22, 22),
+            TopicVerseRef(50, "Filipenses", 4, 6, 7),
+            TopicVerseRef(46, "1 Corintios", 16, 13, 13)
+        )
+    val forgivenessVerses = remember {
+        listOf(
+            TopicVerseRef(40, "Mateo", 6, 15, 15),
+            TopicVerseRef(43, "Juan", 8, 11, 11),
+            TopicVerseRef(42, "Lucas", 23, 34, 34),
+            TopicVerseRef(40, "Mateo", 5, 7, 7),
+            TopicVerseRef(42, "Lucas", 6, 37, 37),
+            TopicVerseRef(19, "Salmos", 86, 5, 5),
+            TopicVerseRef(41, "Marcos", 11, 25, 25),
+            TopicVerseRef(58, "Hebreos", 8, 12, 12),
+            TopicVerseRef(40, "Mateo", 18, 21, 22),
+            TopicVerseRef(19, "Salmos", 18, 25, 25),
+            TopicVerseRef(49, "Efesios", 4, 32, 32),
+            TopicVerseRef(51, "Colosenses", 3, 13, 13),
+            TopicVerseRef(58, "Hebreos", 12, 15, 15),
+            TopicVerseRef(33, "Miqueas", 7, 18, 18),
+            TopicVerseRef(14, "2 Crónicas", 30, 9, 9),
+            TopicVerseRef(62, "1 Juan", 2, 2, 2),
+            TopicVerseRef(19, "Salmos", 32, 5, 5),
+            TopicVerseRef(23, "Isaías", 55, 7, 7),
+            TopicVerseRef(59, "Santiago", 5, 14, 15),
+            TopicVerseRef(32, "Jonás", 3, 10, 10),
+            TopicVerseRef(44, "Hechos", 10, 43, 43)
+        )
+    }
+
+    val salvationVerses = remember {
+        listOf(
+            TopicVerseRef(47, "2 Corintios", 5, 17, 17),
+            TopicVerseRef(43, "Juan", 10, 28, 28),
+            TopicVerseRef(43, "Juan", 3, 36, 36),
+            TopicVerseRef(45, "Romanos", 3, 23, 23),
+            TopicVerseRef(43, "Juan", 1, 12, 12),
+            TopicVerseRef(55, "2 Timoteo", 1, 9, 9),
+            TopicVerseRef(19, "Salmos", 62, 1, 1),
+            TopicVerseRef(44, "Hechos", 2, 21, 21),
+            TopicVerseRef(44, "Hechos", 4, 12, 12),
+            TopicVerseRef(43, "Juan", 3, 16, 16),
+            TopicVerseRef(42, "Lucas", 18, 27, 27),
+            TopicVerseRef(58, "Hebreos", 9, 22, 22),
+            TopicVerseRef(66, "Apocalipsis", 3, 20, 20),
+            TopicVerseRef(62, "1 Juan", 1, 9, 9),
+            TopicVerseRef(45, "Romanos", 10, 9, 10),
+            TopicVerseRef(56, "Tito", 3, 5, 5),
+            TopicVerseRef(44, "Hechos", 16, 31, 31),
+            TopicVerseRef(19, "Salmos", 18, 35, 36),
+            TopicVerseRef(46, "1 Corintios", 15, 1, 2),
+            TopicVerseRef(40, "Mateo", 16, 25, 25)
+        )
+    }
+
+    val peaceVerses = remember {
+        listOf(
+            TopicVerseRef(58, "Hebreos", 12, 11, 11),
+            TopicVerseRef(45, "Romanos", 12, 18, 18),
+            TopicVerseRef(23, "Isaías", 54, 10, 10),
+            TopicVerseRef(20, "Proverbios", 12, 20, 20),
+            TopicVerseRef(45, "Romanos", 1, 7, 7),
+            TopicVerseRef(40, "Mateo", 10, 34, 34),
+            TopicVerseRef(55, "2 Timoteo", 2, 22, 22),
+            TopicVerseRef(49, "Efesios", 6, 14, 16),
+            TopicVerseRef(44, "Hechos", 9, 31, 31),
+            TopicVerseRef(45, "Romanos", 16, 20, 20),
+            TopicVerseRef(58, "Hebreos", 13, 20, 21),
+            TopicVerseRef(43, "Juan", 20, 21, 21),
+            TopicVerseRef(42, "Lucas", 2, 14, 14),
+            TopicVerseRef(20, "Proverbios", 3, 1, 2)
+        )
+    }
+
+    val happinessVerses = remember {
+        listOf(
+            TopicVerseRef(19, "Salmos", 16, 11, 11),
+            TopicVerseRef(19, "Salmos", 30, 5, 5),
+            TopicVerseRef(19, "Salmos", 5, 11, 11),
+            TopicVerseRef(43, "Juan", 15, 11, 11),
+            TopicVerseRef(19, "Salmos", 19, 8, 8),
+            TopicVerseRef(23, "Isaías", 35, 10, 10),
+            TopicVerseRef(20, "Proverbios", 17, 22, 22),
+            TopicVerseRef(20, "Proverbios", 15, 15, 15),
+            TopicVerseRef(42, "Lucas", 15, 10, 10),
+            TopicVerseRef(19, "Salmos", 1, 1, 3),
+            TopicVerseRef(19, "Salmos", 4, 7, 7),
+            TopicVerseRef(19, "Salmos", 33, 21, 21),
+            TopicVerseRef(19, "Salmos", 34, 5, 5),
+            TopicVerseRef(45, "Romanos", 14, 17, 17)
+        )
+    }
+
+    val faithVerses = remember {
+        listOf(
+            TopicVerseRef(43, "Juan", 3, 16, 16),
+            TopicVerseRef(59, "Santiago", 2, 17, 17),
+            TopicVerseRef(40, "Mateo", 17, 20, 20),
+            TopicVerseRef(43, "Juan", 20, 29, 29),
+            TopicVerseRef(42, "Lucas", 8, 50, 50),
+            TopicVerseRef(35, "Habacuc", 2, 4, 4),
+            TopicVerseRef(45, "Romanos", 3, 21, 22),
+            TopicVerseRef(58, "Hebreos", 3, 14, 14),
+            TopicVerseRef(46, "1 Corintios", 15, 1, 2),
+            TopicVerseRef(48, "Gálatas", 2, 15, 16),
+            TopicVerseRef(58, "Hebreos", 11, 1, 1)
+        )
+    }
+
+    val guideItems = remember {
+        listOf(
+            GuideItem(
+                id = "love",
+                titleEs = "Amor",
+                titleEn = "Love",
+                icon = Icons.Default.Favorite,
+                verses = loveVerses
+            ),
+            GuideItem(
+                id = "happiness",
+                titleEs = "Felicidad",
+                titleEn = "Happiness",
+                icon = Icons.Default.WbSunny,
+                verses = happinessVerses
+            ),
+            GuideItem(
+                id = "strength",
+                titleEs = "Fortaleza",
+                titleEn = "Strength",
+                icon = Icons.Default.SelfImprovement,
+                verses = strengthVerses
+            ),
+            GuideItem(
+                id = "forgiveness",
+                titleEs = "Perdón",
+                titleEn = "Forgiveness",
+                icon = Icons.Default.VolunteerActivism,
+                verses = forgivenessVerses
+            ),
+            GuideItem(
+                id = "salvation",
+                titleEs = "Salvación",
+                titleEn = "Salvation",
+                icon = Icons.Default.AutoAwesome,
+                verses = salvationVerses
+            ),
+            GuideItem(
+                id = "peace",
+                titleEs = "Paz",
+                titleEn = "Peace",
+                icon = Icons.Default.Spa,
+                verses = peaceVerses
+            ),
+            GuideItem(
+                id = "faith",
+                titleEs = "Fe",
+                titleEn = "Faith",
+                icon = Icons.Default.Bookmark,
+                verses = faithVerses
+            )
+        )
+    }
+
+    val activeTopic = selectedTopic
+    if (activeTopic != null) {
+        TopicDetailSubpage(
+            topic = activeTopic,
+            books = books,
+            isEnUI = isEnUI,
+            isKjv = isKjv,
+            onBack = { selectedTopic = null },
+            onNavigateToChapter = onNavigateToChapter
+        )
+        return
+    }
+
     data class DailyVerse(
         val bookId: Int,
         val chapter: Int,
@@ -92,8 +326,8 @@ fun GuideScreen(
         val textEn: String
     )
 
-    val dailyVerses = remember {
-        listOf(
+    val dailyVerses = remember(guideItems) {
+        val initialList = listOf(
             DailyVerse(45, 12, 12, "Gozosos en la esperanza; sufridos en la tribulación; constantes en la oración.", "Rejoicing in hope; patient in tribulation; continuing instant in prayer."),
             DailyVerse(19, 46, 10, "Estad quietos, y conoced que yo soy Dios; Seré exaltado entre las naciones; enaltecido seré en la tierra.", "Be still, and know that I am God: I will be exalted among the heathen, I will be exalted in the earth."),
             DailyVerse(62, 1, 9, "Si confesamos nuestros pecados, él es fiel y justo para perdonar nuestros pecados, y limpiarnos de toda maldad.", "If we confess our sins, he is faithful and just to forgive us our sins, and to cleanse us from all unrighteousness."),
@@ -109,6 +343,19 @@ fun GuideScreen(
             DailyVerse(55, 3, 16, "Toda la Escritura es inspirada por Dios, y útil para enseñar, para redargüir, para corregir, para instruir en justicia.", "All scripture is given by inspiration of God, and is profitable for doctrine, for reproof, for correction, for instruction in righteousness:"),
             DailyVerse(19, 34, 18, "Cercano está Jehová a los quebrantados de corazón; Y salva a los contritos de espíritu.", "The LORD is nigh unto them that are of a broken heart; and saveth such as be of a contrite spirit.")
         )
+
+        val topicDailyVerses = guideItems.flatMap { item ->
+            item.verses.map { v ->
+                DailyVerse(
+                    bookId = v.bookId,
+                    chapter = v.chapter,
+                    verseNum = v.startVerse,
+                    textEs = v.displayRefEs,
+                    textEn = v.displayRefEs
+                )
+            }
+        }
+        (initialList + topicDailyVerses).distinctBy { "${it.bookId}_${it.chapter}_${it.verseNum}" }
     }
 
     val dayOfYear = remember { Calendar.getInstance().get(Calendar.DAY_OF_YEAR) }
@@ -116,88 +363,6 @@ fun GuideScreen(
         dailyVerses[dayOfYear % dailyVerses.size]
     }
     val targetDailyBook = books.find { it.id == todayVerse.bookId }
-
-    val guideItems = remember {
-        listOf(
-            GuideItem(
-                titleEs = "Amor",
-                titleEn = "Love",
-                icon = Icons.Default.Favorite,
-                bookId = 43,
-                bookName = "Juan",
-                chapterNumber = 3,
-                verseNumber = 16,
-                sampleTextEs = "Porque de tal manera amó Dios al mundo, que ha dado a su Hijo unigénito...",
-                sampleTextEn = "For God so loved the world, that he gave his only begotten Son..."
-            ),
-            GuideItem(
-                titleEs = "Fortaleza",
-                titleEn = "Strength",
-                icon = Icons.Default.SelfImprovement,
-                bookId = 6,
-                bookName = "Josué",
-                chapterNumber = 1,
-                verseNumber = 9,
-                sampleTextEs = "Mira que te mando que te esfuerces y seas valiente; no temas ni desmayes...",
-                sampleTextEn = "Have not I commanded thee? Be strong and of a good courage; be not afraid..."
-            ),
-            GuideItem(
-                titleEs = "Perdón",
-                titleEn = "Forgiveness",
-                icon = Icons.Default.VolunteerActivism,
-                bookId = 49,
-                bookName = "Efesios",
-                chapterNumber = 4,
-                verseNumber = 32,
-                sampleTextEs = "Antes sed benignos unos con otros, misericordiosos, perdonándoos unos a otros...",
-                sampleTextEn = "And be ye kind one to another, tenderhearted, forgiving one another..."
-            ),
-            GuideItem(
-                titleEs = "Salvación",
-                titleEn = "Salvation",
-                icon = Icons.Default.AutoAwesome,
-                bookId = 45,
-                bookName = "Romanos",
-                chapterNumber = 10,
-                verseNumber = 9,
-                sampleTextEs = "Que si confesares con tu boca que Jesús es el Señor, y creyeres en tu corazón...",
-                sampleTextEn = "That if thou shalt confess with thy mouth the Lord Jesus, and shalt believe in thine heart..."
-            ),
-            GuideItem(
-                titleEs = "Paz",
-                titleEn = "Peace",
-                icon = Icons.Default.Spa,
-                bookId = 43,
-                bookName = "Juan",
-                chapterNumber = 14,
-                verseNumber = 27,
-                sampleTextEs = "La paz os dejo, mi paz os doy; yo no os la doy como el mundo la da. No se turbe vuestro corazón.",
-                sampleTextEn = "Peace I leave with you, my peace I give unto you: not as the world giveth, give I unto you."
-            ),
-            GuideItem(
-                titleEs = "Fe",
-                titleEn = "Faith",
-                icon = Icons.Default.Bookmark,
-                bookId = 58,
-                bookName = "Hebreos",
-                chapterNumber = 11,
-                verseNumber = 1,
-                sampleTextEs = "Es, pues, la fe la certeza de lo que se espera, la convicción de lo que no se ve.",
-                sampleTextEn = "Now faith is the substance of things hoped for, the evidence of things not seen."
-            ),
-            GuideItem(
-                titleEs = "Consejo",
-                titleEn = "Counsel",
-                icon = Icons.Default.Category,
-                bookId = 59,
-                bookName = "Santiago",
-                chapterNumber = 1,
-                verseNumber = 5,
-                sampleTextEs = "Y si alguno de vosotros tiene falta de sabiduría, pídala a Dios, el cual da a todos abundantemente...",
-                sampleTextEn = "If any of you lack wisdom, let him ask of God, that giveth to all men liberally..."
-            )
-        )
-    }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -304,12 +469,33 @@ fun GuideScreen(
                             color = MaterialTheme.colorScheme.onPrimaryContainer
                         )
                         Spacer(modifier = Modifier.height(10.dp))
-                        Text(
-                            text = if (isEnUI) "Tap to open chapter →" else "Toca para abrir capítulo →",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.primary
-                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = if (isEnUI) "Tap to open chapter →" else "Toca para abrir capítulo →",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            val context = androidx.compose.ui.platform.LocalContext.current
+                            IconButton(
+                                onClick = {
+                                    val verseText = if (isKjv) todayVerse.textEn else todayVerse.textEs
+                                    com.jadalai.reinavalera1960.service.TextToSpeechManager.getInstance(context).speak(verseText, isKjv)
+                                },
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.RecordVoiceOver,
+                                    contentDescription = "Leer versículo en voz alta",
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -327,10 +513,14 @@ fun GuideScreen(
 
             // Thematic Guide list
             items(guideItems) { guide ->
-                val guideBook = books.find { it.id == guide.bookId }
-                val localizedTopicBookName = guideBook?.let {
-                    com.jadalai.reinavalera1960.ui.i18n.AppStrings.getLocalizedBookName(it.id, it.name, isKjv)
-                } ?: com.jadalai.reinavalera1960.ui.i18n.AppStrings.getLocalizedBookName(guide.bookId, guide.bookName, isKjv)
+                val firstVerse = guide.verses.firstOrNull()
+                val countVerses = guide.verses.size
+                val guideBook = books.find { it.id == firstVerse?.bookId }
+                val localizedTopicBookName = firstVerse?.let { vRef ->
+                    guideBook?.let {
+                        com.jadalai.reinavalera1960.ui.i18n.AppStrings.getLocalizedBookName(it.id, it.name, isKjv)
+                    } ?: com.jadalai.reinavalera1960.ui.i18n.AppStrings.getLocalizedBookName(vRef.bookId, vRef.bookNameEs, isKjv)
+                } ?: ""
 
                 ElevatedCard(
                     shape = RoundedCornerShape(20.dp),
@@ -341,10 +531,7 @@ fun GuideScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable {
-                            if (guideBook != null) {
-                                val topicVerseId = guideBook.id.toLong() * 1000000L + guide.chapterNumber * 1000L + guide.verseNumber
-                                onNavigateToChapter(guideBook, guide.chapterNumber, topicVerseId)
-                            }
+                            selectedTopic = guide
                         }
                 ) {
                     ListItem(
@@ -356,19 +543,19 @@ fun GuideScreen(
                             )
                         },
                         supportingContent = {
-                            Column {
-                                Text(
-                                    text = "$localizedTopicBookName ${guide.chapterNumber}:${guide.verseNumber}",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                                Text(
-                                    text = if (isKjv) guide.sampleTextEn else guide.sampleTextEs,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    maxLines = 2
-                                )
+                            if (firstVerse != null) {
+                                Column {
+                                    Text(
+                                        text = if (countVerses > 1) {
+                                            if (isEnUI) "$countVerses verses" else "$countVerses versículos"
+                                        } else {
+                                            "$localizedTopicBookName ${firstVerse.chapter}:${if (firstVerse.startVerse == firstVerse.endVerse) "${firstVerse.startVerse}" else "${firstVerse.startVerse}-${firstVerse.endVerse}"}"
+                                        },
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                }
                             }
                         },
                         leadingContent = {
@@ -387,6 +574,14 @@ fun GuideScreen(
                                 }
                             }
                         },
+                        trailingContent = {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                modifier = Modifier.size(16.dp)
+                            )
+                        },
                         colors = ListItemDefaults.colors(containerColor = Color.Transparent)
                     )
                 }
@@ -398,3 +593,152 @@ fun GuideScreen(
         }
     }
 }
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun TopicDetailSubpage(
+    topic: GuideItem,
+    books: List<BookEntity>,
+    isEnUI: Boolean,
+    isKjv: Boolean,
+    onBack: () -> Unit,
+    onNavigateToChapter: (BookEntity, Int, Long?) -> Unit
+) {
+    androidx.activity.compose.BackHandler(onBack = onBack)
+
+    val topicTitle = if (isEnUI) topic.titleEn else topic.titleEs
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+
+    Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
+        contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0),
+        topBar = {
+            LargeTopAppBar(
+                title = {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Icon(
+                            imageVector = topic.icon,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(28.dp)
+                        )
+                        Text(
+                            text = topicTitle,
+                            style = com.jadalai.reinavalera1960.ui.theme.LocalAppFonts.current.topBarTitle,
+                            color = MaterialTheme.colorScheme.onBackground
+                        )
+                    }
+                },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Volver"
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background,
+                    scrolledContainerColor = MaterialTheme.colorScheme.background,
+                    titleContentColor = MaterialTheme.colorScheme.onBackground
+                ),
+                scrollBehavior = scrollBehavior
+            )
+        },
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection)
+    ) { padding ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            item {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = if (isEnUI) "Verses about $topicTitle" else "Versículos de $topicTitle",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    modifier = Modifier.padding(bottom = 4.dp)
+                )
+            }
+
+            items(topic.verses) { vRef ->
+                val targetBook = books.find { it.id == vRef.bookId }
+                val bookName = targetBook?.let {
+                    com.jadalai.reinavalera1960.ui.i18n.AppStrings.getLocalizedBookName(it.id, it.name, isKjv)
+                } ?: com.jadalai.reinavalera1960.ui.i18n.AppStrings.getLocalizedBookName(vRef.bookId, vRef.bookNameEs, isKjv)
+
+                val verseRefText = if (vRef.startVerse == vRef.endVerse) {
+                    "$bookName ${vRef.chapter}:${vRef.startVerse}"
+                } else {
+                    "$bookName ${vRef.chapter}:${vRef.startVerse}-${vRef.endVerse}"
+                }
+
+                ElevatedCard(
+                    shape = RoundedCornerShape(18.dp),
+                    colors = CardDefaults.elevatedCardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                    ),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            if (targetBook != null) {
+                                val verseId = targetBook.id.toLong() * 1000000L + vRef.chapter * 1000L + vRef.startVerse
+                                onNavigateToChapter(targetBook, vRef.chapter, verseId)
+                            }
+                        }
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Surface(
+                                shape = CircleShape,
+                                color = MaterialTheme.colorScheme.primaryContainer,
+                                modifier = Modifier.size(36.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = Icons.Default.Bookmark,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            }
+                            Text(
+                                text = verseRefText,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
+            }
+
+            item {
+                Spacer(modifier = Modifier.height(96.dp))
+            }
+        }
+    }
+}
+

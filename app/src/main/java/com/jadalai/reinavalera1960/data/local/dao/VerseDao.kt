@@ -40,6 +40,30 @@ interface VerseDao {
     """)
     fun getVersesWithDetailsForChapter(chapterId: Int, translation: String = "rvr1960"): Flow<List<VerseWithDetails>>
 
+    @Query("""
+        SELECT v.*, b.name AS book_name, c.chapter_number AS chapter_number,
+               h.color_hex AS highlight_color,
+               (CASE WHEN bm.id IS NOT NULL THEN 1 ELSE 0 END) AS is_bookmarked,
+               (CASE WHEN fav.id IS NOT NULL THEN 1 ELSE 0 END) AS is_favorite
+        FROM verses v
+        INNER JOIN chapters c ON v.chapter_id = c.id
+        INNER JOIN books b ON v.book_id = b.id
+        LEFT JOIN highlights h ON v.id = h.verse_id
+        LEFT JOIN bookmarks bm ON v.id = bm.verse_id
+        LEFT JOIN favorites fav ON v.id = fav.verse_id
+        WHERE v.book_id = :bookId AND c.chapter_number = :chapterNumber 
+          AND v.verse_number >= :startVerse AND v.verse_number <= :endVerse 
+          AND v.translation = :translation
+        ORDER BY v.verse_number ASC
+    """)
+    fun getVersesWithDetailsForRange(
+        bookId: Int,
+        chapterNumber: Int,
+        startVerse: Int,
+        endVerse: Int,
+        translation: String = "rvr1960"
+    ): Flow<List<VerseWithDetails>>
+
     @Query("SELECT * FROM verses WHERE chapter_id = :chapterId AND translation = :translation ORDER BY verse_number ASC")
     fun getVersesForChapter(chapterId: Int, translation: String = "rvr1960"): Flow<List<VerseEntity>>
 

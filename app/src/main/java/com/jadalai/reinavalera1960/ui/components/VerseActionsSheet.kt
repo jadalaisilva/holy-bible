@@ -19,6 +19,7 @@ import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.FormatColorReset
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.RecordVoiceOver
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -57,7 +58,8 @@ fun VerseActionsSheet(
     onHighlight: (String?) -> Unit,
     onBookmark: (String?) -> Unit,
     onShare: () -> Unit,
-    onPlayAudio: () -> Unit
+    onPlayAudio: () -> Unit,
+    onPlayTts: () -> Unit = {}
 ) {
     if (verses.isEmpty()) return
 
@@ -242,6 +244,13 @@ fun VerseActionsSheet(
                     headlineContent = { Text("Escuchar audio del capítulo") },
                     leadingContent = { Icon(imageVector = Icons.Default.PlayArrow, contentDescription = null) },
                     modifier = Modifier.clickable { onPlayAudio() }
+                )
+
+                // Text-To-Speech (TTS) Action
+                ListItem(
+                    headlineContent = { Text(if (isEnglish) "Read out loud (Voice TTS)" else "Leer en voz alta (Voz TTS)") },
+                    leadingContent = { Icon(imageVector = Icons.Default.RecordVoiceOver, contentDescription = null) },
+                    modifier = Modifier.clickable { onPlayTts() }
                 )
             }
         }

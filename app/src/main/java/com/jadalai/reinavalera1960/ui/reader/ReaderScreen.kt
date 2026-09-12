@@ -477,6 +477,11 @@ fun ReaderScreen(
                     }
                     context.startService(intent)
                     viewModel.closeVerseMenu()
+                },
+                onPlayTts = {
+                    val textToRead = selectedList.joinToString(separator = "\n") { "${it.verse_number}. ${it.content_text}" }
+                    com.jadalai.reinavalera1960.service.TextToSpeechManager.getInstance(context).speak(textToRead, isKjv)
+                    viewModel.closeVerseMenu()
                 }
             )
         }
