@@ -3,6 +3,9 @@ package com.jadalai.reinavalera1960.ui.bookmarks
 import android.content.Context
 import android.content.Intent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
@@ -84,17 +87,73 @@ import kotlinx.coroutines.launch
 import com.jadalai.reinavalera1960.data.local.entity.BookmarkEntity
 import com.jadalai.reinavalera1960.data.local.entity.ReadingHistoryEntity
 import com.jadalai.reinavalera1960.ui.i18n.AppStrings
+import com.jadalai.reinavalera1960.ui.i18n.resolveLanguage
 import com.jadalai.reinavalera1960.ui.settings.AppLanguage
 import com.jadalai.reinavalera1960.ui.theme.GoogleSansFlexTopBarFont
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.HorizontalDivider
+import java.util.Calendar
 import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.material3.Scaffold
+
+enum class HistoryDateFilter {
+    ALL, TODAY, THIS_WEEK, SPECIFIC_DATE;
+
+    fun getLabel(isEn: Boolean, customDateFormatted: String? = null): String = when (this) {
+        ALL -> if (isEn) "All" else "Todos"
+        TODAY -> if (isEn) "Today" else "Hoy"
+        THIS_WEEK -> if (isEn) "This week" else "Esta semana"
+        SPECIFIC_DATE -> customDateFormatted ?: if (isEn) "Pick date..." else "Elegir fecha..."
+    }
+}
+
+private fun getHistoryDateGroup(timestamp: Long, isEn: Boolean): String {
+    val now = Calendar.getInstance()
+    val itemCal = Calendar.getInstance().apply { timeInMillis = timestamp }
+
+    val isSameDay = now.get(Calendar.YEAR) == itemCal.get(Calendar.YEAR) &&
+            now.get(Calendar.DAY_OF_YEAR) == itemCal.get(Calendar.DAY_OF_YEAR)
+    if (isSameDay) return if (isEn) "Today" else "Hoy"
+
+    val yesterday = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -1) }
+    val isYesterday = yesterday.get(Calendar.YEAR) == itemCal.get(Calendar.YEAR) &&
+            yesterday.get(Calendar.DAY_OF_YEAR) == itemCal.get(Calendar.DAY_OF_YEAR)
+    if (isYesterday) return if (isEn) "Yesterday" else "Ayer"
+
+    val currentWeek = now.get(Calendar.WEEK_OF_YEAR)
+    val currentYear = now.get(Calendar.YEAR)
+    val isThisWeek = currentYear == itemCal.get(Calendar.YEAR) &&
+            currentWeek == itemCal.get(Calendar.WEEK_OF_YEAR)
+    if (isThisWeek) return if (isEn) "This week" else "Esta semana"
+
+    val locale = if (isEn) Locale.ENGLISH else Locale.forLanguageTag("es")
+    val isThisYear = currentYear == itemCal.get(Calendar.YEAR)
+    val pattern = if (isThisYear) "MMMM" else "MMMM yyyy"
+    val formatted = SimpleDateFormat(pattern, locale).format(Date(timestamp))
+    return formatted.replaceFirstChar { if (it.isLowerCase()) it.titlecase(locale) else it.toString() }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -117,9 +176,57 @@ fun BookmarksScreen(
     var showClearHistoryDialog by remember { mutableStateOf(false) }
     var itemPendingDeletionBookmark by remember { mutableStateOf<BookmarkEntity?>(null) }
     var itemPendingDeletionHistory by remember { mutableStateOf<ReadingHistoryEntity?>(null) }
+    var activeHistoryFilter by rememberSaveable { mutableStateOf(HistoryDateFilter.ALL) }
+    var selectedSpecificDateMillis by rememberSaveable { mutableStateOf<Long?>(null) }
+    var showDatePickerDialog by remember { mutableStateOf(false) }
 
+    val effectiveLang = resolveLanguage(currentLanguage)
+    val isEn = effectiveLang == AppLanguage.ENGLISH
     val bookmarksLabel = AppStrings.topBarBookmarksTitle(currentLanguage)
-    val historyLabel = if (currentLanguage == AppLanguage.ENGLISH) "History" else "Historial"
+    val historyLabel = if (isEn) "History" else "Historial"
+
+    val filteredHistory: List<ReadingHistoryEntity> = remember(readingHistory, activeHistoryFilter, selectedSpecificDateMillis) {
+        if (activeHistoryFilter == HistoryDateFilter.ALL) {
+            readingHistory
+        } else {
+            val now = Calendar.getInstance()
+            val specificCal = selectedSpecificDateMillis?.let {
+                Calendar.getInstance().apply { timeInMillis = it }
+            }
+            readingHistory.filter { item ->
+                val itemCal = Calendar.getInstance().apply { timeInMillis = item.timestampRead }
+                when (activeHistoryFilter) {
+                    HistoryDateFilter.ALL -> true
+                    HistoryDateFilter.TODAY -> {
+                        now.get(Calendar.YEAR) == itemCal.get(Calendar.YEAR) &&
+                                now.get(Calendar.DAY_OF_YEAR) == itemCal.get(Calendar.DAY_OF_YEAR)
+                    }
+                    HistoryDateFilter.THIS_WEEK -> {
+                        now.get(Calendar.YEAR) == itemCal.get(Calendar.YEAR) &&
+                                now.get(Calendar.WEEK_OF_YEAR) == itemCal.get(Calendar.WEEK_OF_YEAR)
+                    }
+                    HistoryDateFilter.SPECIFIC_DATE -> {
+                        if (specificCal != null) {
+                            specificCal.get(Calendar.YEAR) == itemCal.get(Calendar.YEAR) &&
+                                    specificCal.get(Calendar.DAY_OF_YEAR) == itemCal.get(Calendar.DAY_OF_YEAR)
+                        } else {
+                            true
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    val groupedHistory: Map<String, List<ReadingHistoryEntity>> = remember(filteredHistory, isEn) {
+        val map = LinkedHashMap<String, MutableList<ReadingHistoryEntity>>()
+        for (item in filteredHistory) {
+            val groupKey = getHistoryDateGroup(item.timestampRead, isEn)
+            val list = map.getOrPut(groupKey) { mutableListOf() }
+            list.add(item)
+        }
+        map
+    }
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
     Scaffold(
@@ -165,54 +272,100 @@ fun BookmarksScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            // Sub Tabs: Marcadores / Historial
-            TabRow(
-                selectedTabIndex = selectedSubTab,
-                containerColor = Color.Transparent,
-                contentColor = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+            // Sub Tabs: Marcadores / Historial - M3 Expressive segmented tonal pill container
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 6.dp),
+                shape = RoundedCornerShape(24.dp),
+                color = MaterialTheme.colorScheme.surfaceContainerLow
             ) {
-                Tab(
-                    selected = selectedSubTab == 0,
-                    onClick = { selectedSubTab = 0 },
-                    text = {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    val isBookmarks = selectedSubTab == 0
+                    val bookmarksBg by animateColorAsState(
+                        targetValue = if (isBookmarks) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
+                        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+                        label = "bookmarksTabBg"
+                    )
+                    val bookmarksContentColor by animateColorAsState(
+                        targetValue = if (isBookmarks) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+                        label = "bookmarksTabColor"
+                    )
+
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(bookmarksBg)
+                            .clickable { selectedSubTab = 0 }
+                            .padding(vertical = 10.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
                             Icon(
-                                imageVector = if (selectedSubTab == 0) Icons.Filled.Bookmarks else Icons.Outlined.Bookmarks,
+                                imageVector = if (isBookmarks) Icons.Filled.Bookmarks else Icons.Outlined.Bookmarks,
                                 contentDescription = null,
+                                tint = bookmarksContentColor,
                                 modifier = Modifier.size(18.dp)
                             )
                             Text(
                                 text = "$bookmarksLabel (${bookmarks.size})",
-                                fontWeight = if (selectedSubTab == 0) FontWeight.Bold else FontWeight.Normal
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = if (isBookmarks) FontWeight.Bold else FontWeight.Medium,
+                                color = bookmarksContentColor
                             )
                         }
                     }
-                )
 
-                Tab(
-                    selected = selectedSubTab == 1,
-                    onClick = { selectedSubTab = 1 },
-                    text = {
+                    val isHistory = selectedSubTab == 1
+                    val historyBg by animateColorAsState(
+                        targetValue = if (isHistory) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
+                        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+                        label = "historyTabBg"
+                    )
+                    val historyContentColor by animateColorAsState(
+                        targetValue = if (isHistory) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+                        label = "historyTabColor"
+                    )
+
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(historyBg)
+                            .clickable { selectedSubTab = 1 }
+                            .padding(vertical = 10.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
                             Icon(
-                                imageVector = if (selectedSubTab == 1) Icons.Filled.History else Icons.Outlined.History,
+                                imageVector = if (isHistory) Icons.Filled.History else Icons.Outlined.History,
                                 contentDescription = null,
+                                tint = historyContentColor,
                                 modifier = Modifier.size(18.dp)
                             )
                             Text(
                                 text = "$historyLabel (${readingHistory.size})",
-                                fontWeight = if (selectedSubTab == 1) FontWeight.Bold else FontWeight.Normal
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = if (isHistory) FontWeight.Bold else FontWeight.Medium,
+                                color = historyContentColor
                             )
                         }
                     }
-                )
+                }
             }
 
             Box(modifier = Modifier.weight(1f)) {
@@ -277,14 +430,14 @@ fun BookmarksScreen(
                                         editedNoteText = bookmark.customNote ?: ""
                                     },
                                     onShare = {
-                                        shareBookmark(context, bookmark)
+                                        shareBookmark(context, bookmark, isEn)
                                     }
                                 )
                             }
                         }
                     }
                 } else {
-                    // Timeline Tab
+                    // Stylized Timeline History Tab
                     if (readingHistory.isEmpty()) {
                         Box(
                             modifier = Modifier
@@ -316,24 +469,130 @@ fun BookmarksScreen(
                             }
                         }
                     } else {
-                        LazyColumn(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(horizontal = 16.dp),
-                            verticalArrangement = Arrangement.spacedBy(10.dp),
-                            contentPadding = PaddingValues(top = 8.dp, bottom = 120.dp)
-                        ) {
-                            items(readingHistory, key = { it.id }) { historyItem ->
-                                HistoryTimelineItem(
-                                    historyItem = historyItem,
-                                    currentLanguage = currentLanguage,
-                                    onClick = {
-                                        onNavigateToVerse(historyItem.bookId, historyItem.chapterNumber, null)
-                                    },
-                                    onRequestDelete = {
-                                        itemPendingDeletionHistory = historyItem
+                        Column(modifier = Modifier.fillMaxSize()) {
+                            // Date filter chips row
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .horizontalScroll(rememberScrollState())
+                                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                val specificDateLabel = remember(selectedSpecificDateMillis, isEn) {
+                                    selectedSpecificDateMillis?.let { ms ->
+                                        val locale = if (isEn) Locale.ENGLISH else Locale.forLanguageTag("es")
+                                        val sdf = SimpleDateFormat(if (isEn) "MMM dd, yyyy" else "dd MMM yyyy", locale)
+                                        sdf.format(Date(ms))
                                     }
-                                )
+                                }
+
+                                for (filterOption in HistoryDateFilter.values()) {
+                                    val isSelected = activeHistoryFilter == filterOption
+                                    val chipLabel = filterOption.getLabel(isEn, specificDateLabel)
+                                    FilterChip(
+                                        selected = isSelected,
+                                        onClick = {
+                                            if (filterOption == HistoryDateFilter.SPECIFIC_DATE) {
+                                                activeHistoryFilter = filterOption
+                                                showDatePickerDialog = true
+                                            } else {
+                                                activeHistoryFilter = filterOption
+                                            }
+                                        },
+                                        label = {
+                                            Text(
+                                                text = chipLabel,
+                                                style = MaterialTheme.typography.labelMedium,
+                                                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
+                                            )
+                                        },
+                                        leadingIcon = {
+                                            if (filterOption == HistoryDateFilter.SPECIFIC_DATE) {
+                                                Icon(
+                                                    imageVector = Icons.Default.DateRange,
+                                                    contentDescription = null,
+                                                    modifier = Modifier.size(16.dp)
+                                                )
+                                            } else if (isSelected) {
+                                                Icon(
+                                                    imageVector = Icons.Default.Check,
+                                                    contentDescription = null,
+                                                    modifier = Modifier.size(16.dp)
+                                                )
+                                            }
+                                        },
+                                        shape = RoundedCornerShape(16.dp),
+                                        colors = FilterChipDefaults.filterChipColors(
+                                            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                            selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                            labelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                        ),
+                                        border = null
+                                    )
+                                }
+                            }
+
+                            if (filteredHistory.isEmpty()) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(32.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Column(
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.DateRange,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(40.dp),
+                                            tint = MaterialTheme.colorScheme.outline
+                                        )
+                                        Text(
+                                            text = if (isEn) "No history for selected filter" else "Sin lecturas en el período seleccionado",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                            } else {
+                                LazyColumn(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(horizontal = 16.dp),
+                                    contentPadding = PaddingValues(top = 4.dp, bottom = 120.dp)
+                                ) {
+                                    for ((groupTitle, itemsInGroup) in groupedHistory) {
+                                        item(key = "header_$groupTitle") {
+                                            HistorySectionHeader(
+                                                title = groupTitle,
+                                                count = itemsInGroup.size
+                                            )
+                                        }
+
+                                        itemsIndexed(
+                                            items = itemsInGroup,
+                                            key = { _, item -> item.id }
+                                        ) { index, historyItem ->
+                                            val isLast = index == itemsInGroup.lastIndex
+                                            HistoryTimelineItem(
+                                                historyItem = historyItem,
+                                                currentLanguage = currentLanguage,
+                                                isLastInGroup = isLast,
+                                                onClick = {
+                                                    onNavigateToVerse(historyItem.bookId, historyItem.chapterNumber, null)
+                                                },
+                                                onRequestDelete = {
+                                                    itemPendingDeletionHistory = historyItem
+                                                }
+                                            )
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
@@ -342,7 +601,51 @@ fun BookmarksScreen(
         }
     }
 
-    val isEn = currentLanguage == AppLanguage.ENGLISH
+    // M3 Expressive DatePickerDialog for specific date filter
+    if (showDatePickerDialog) {
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = selectedSpecificDateMillis ?: System.currentTimeMillis()
+        )
+        DatePickerDialog(
+            onDismissRequest = { showDatePickerDialog = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val selectedDateUtc = datePickerState.selectedDateMillis
+                        if (selectedDateUtc != null) {
+                            // Convert UTC millis from DatePicker to local date millis for accurate day comparison
+                            val utcCal = Calendar.getInstance(java.util.TimeZone.getTimeZone("UTC")).apply {
+                                timeInMillis = selectedDateUtc
+                            }
+                            val localCal = Calendar.getInstance().apply {
+                                set(
+                                    utcCal.get(Calendar.YEAR),
+                                    utcCal.get(Calendar.MONTH),
+                                    utcCal.get(Calendar.DAY_OF_MONTH),
+                                    12, 0, 0
+                                )
+                            }
+                            selectedSpecificDateMillis = localCal.timeInMillis
+                        }
+                        showDatePickerDialog = false
+                    }
+                ) {
+                    Text(if (isEn) "OK" else "Aceptar")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePickerDialog = false }) {
+                    Text(if (isEn) "Cancel" else "Cancelar")
+                }
+            },
+            shape = RoundedCornerShape(28.dp)
+        ) {
+            DatePicker(
+                state = datePickerState,
+                showModeToggle = false
+            )
+        }
+    }
 
     // Clear history confirmation dialog
     if (showClearHistoryDialog) {
@@ -386,10 +689,13 @@ fun BookmarksScreen(
     // Delete bookmark confirmation dialog
     if (itemPendingDeletionBookmark != null) {
         val bookmarkToDelete = itemPendingDeletionBookmark!!
+        val rawBookName = bookmarkToDelete.bookName
+        val bookId = (bookmarkToDelete.verseId / 1000000).toInt()
+        val localizedBook = AppStrings.getLocalizedBookName(bookId, rawBookName, isEn)
         val verseRef = if (bookmarkToDelete.verseEndNumber > bookmarkToDelete.verseNumber) {
-            "${bookmarkToDelete.bookName} ${bookmarkToDelete.chapterNumber}:${bookmarkToDelete.verseNumber}-${bookmarkToDelete.verseEndNumber}"
+            "$localizedBook ${bookmarkToDelete.chapterNumber}:${bookmarkToDelete.verseNumber}-${bookmarkToDelete.verseEndNumber}"
         } else {
-            "${bookmarkToDelete.bookName} ${bookmarkToDelete.chapterNumber}:${bookmarkToDelete.verseNumber}"
+            "$localizedBook ${bookmarkToDelete.chapterNumber}:${bookmarkToDelete.verseNumber}"
         }
         AlertDialog(
             onDismissRequest = { itemPendingDeletionBookmark = null },
@@ -440,6 +746,9 @@ fun BookmarksScreen(
     // Delete history item confirmation dialog
     if (itemPendingDeletionHistory != null) {
         val historyToDelete = itemPendingDeletionHistory!!
+        val rawBookName = historyToDelete.bookName
+        val bookId = historyToDelete.bookId
+        val localizedBook = AppStrings.getLocalizedBookName(bookId, rawBookName, isEn)
         AlertDialog(
             onDismissRequest = { itemPendingDeletionHistory = null },
             title = {
@@ -450,7 +759,7 @@ fun BookmarksScreen(
             },
             text = {
                 Text(
-                    text = if (isEn) "Do you want to remove ${historyToDelete.bookName} ${historyToDelete.chapterNumber} from history?" else "¿Desea eliminar ${historyToDelete.bookName} ${historyToDelete.chapterNumber} del historial?",
+                    text = if (isEn) "Do you want to remove $localizedBook ${historyToDelete.chapterNumber} from history?" else "¿Desea eliminar ${historyToDelete.bookName} ${historyToDelete.chapterNumber} del historial?",
                     style = MaterialTheme.typography.bodyMedium
                 )
             },
@@ -480,10 +789,13 @@ fun BookmarksScreen(
     // Edit bookmark note dialog
     if (editingBookmark != null) {
         val currentTarget = editingBookmark!!
+        val rawBookName = currentTarget.bookName
+        val bookId = (currentTarget.verseId / 1000000).toInt()
+        val localizedBook = AppStrings.getLocalizedBookName(bookId, rawBookName, isEn)
         val verseRef = if (currentTarget.verseEndNumber > currentTarget.verseNumber) {
-            "${currentTarget.bookName} ${currentTarget.chapterNumber}:${currentTarget.verseNumber}-${currentTarget.verseEndNumber}"
+            "$localizedBook ${currentTarget.chapterNumber}:${currentTarget.verseNumber}-${currentTarget.verseEndNumber}"
         } else {
-            "${currentTarget.bookName} ${currentTarget.chapterNumber}:${currentTarget.verseNumber}"
+            "$localizedBook ${currentTarget.chapterNumber}:${currentTarget.verseNumber}"
         }
         AlertDialog(
             onDismissRequest = { editingBookmark = null },
@@ -542,7 +854,8 @@ fun SwipeableBookmarkItem(
     onEdit: () -> Unit,
     onShare: () -> Unit
 ) {
-    val isEn = currentLanguage == AppLanguage.ENGLISH
+    val effectiveLang = resolveLanguage(currentLanguage)
+    val isEn = effectiveLang == AppLanguage.ENGLISH
     val dismissState = rememberSwipeToDismissBoxState(
         positionalThreshold = { totalDistance -> totalDistance * 0.5f },
         confirmValueChange = { value ->
@@ -578,7 +891,7 @@ fun SwipeableBookmarkItem(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .clip(RoundedCornerShape(20.dp))
+                    .clip(RoundedCornerShape(24.dp))
                     .background(containerColor)
                     .padding(horizontal = 24.dp),
                 contentAlignment = Alignment.CenterEnd
@@ -593,11 +906,11 @@ fun SwipeableBookmarkItem(
         },
         content = {
             Surface(
-                shape = RoundedCornerShape(20.dp),
+                shape = RoundedCornerShape(24.dp),
                 color = MaterialTheme.colorScheme.surface
             ) {
                 ElevatedCard(
-                    shape = RoundedCornerShape(20.dp),
+                    shape = RoundedCornerShape(24.dp),
                     colors = CardDefaults.elevatedCardColors(
                         containerColor = itemContainerColor
                     ),
@@ -712,7 +1025,7 @@ fun SwipeableBookmarkItem(
                                     .padding(8.dp)
                             ) {
                                 Text(
-                                    text = "Nota: ${bookmark.customNote}",
+                                    text = "${AppStrings.bookmarkNoteLabel(currentLanguage)} ${bookmark.customNote}",
                                     style = MaterialTheme.typography.bodySmall,
                                     fontStyle = FontStyle.Italic,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -721,12 +1034,13 @@ fun SwipeableBookmarkItem(
                         }
 
                         Spacer(modifier = Modifier.height(8.dp))
-                        val dateString = remember(bookmark.timestampAdded) {
-                            val sdf = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
+                        val dateString = remember(bookmark.timestampAdded, isEn) {
+                            val locale = if (isEn) Locale.ENGLISH else Locale.forLanguageTag("es")
+                            val sdf = SimpleDateFormat(if (isEn) "MMM dd, yyyy" else "dd MMM yyyy", locale)
                             sdf.format(Date(bookmark.timestampAdded))
                         }
                         Text(
-                            text = "Guardado el $dateString",
+                            text = AppStrings.bookmarkSavedDate(dateString, currentLanguage),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.outline
                         )
@@ -737,15 +1051,56 @@ fun SwipeableBookmarkItem(
     )
 }
 
+@Composable
+fun HistorySectionHeader(
+    title: String,
+    count: Int
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 12.dp, top = 20.dp, bottom = 8.dp, end = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary
+        )
+        Surface(
+            shape = CircleShape,
+            color = MaterialTheme.colorScheme.surfaceContainerHighest,
+            modifier = Modifier.padding(bottom = 1.dp)
+        ) {
+            Text(
+                text = count.toString(),
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp)
+            )
+        }
+        HorizontalDivider(
+            modifier = Modifier.weight(1f),
+            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+            thickness = 1.dp
+        )
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HistoryTimelineItem(
     historyItem: com.jadalai.reinavalera1960.data.local.entity.ReadingHistoryEntity,
     currentLanguage: AppLanguage = AppLanguage.SPANISH,
+    isLastInGroup: Boolean = false,
     onClick: () -> Unit,
     onRequestDelete: () -> Unit
 ) {
-    val isEn = currentLanguage == AppLanguage.ENGLISH
+    val effectiveLang = resolveLanguage(currentLanguage)
+    val isEn = effectiveLang == AppLanguage.ENGLISH
     val dismissState = rememberSwipeToDismissBoxState(
         positionalThreshold = { totalDistance -> totalDistance * 0.5f },
         confirmValueChange = { value ->
@@ -758,133 +1113,194 @@ fun HistoryTimelineItem(
         }
     )
 
-    SwipeToDismissBox(
-        state = dismissState,
-        enableDismissFromStartToEnd = false,
-        enableDismissFromEndToStart = true,
-        backgroundContent = {
-            val isDismissing = dismissState.targetValue == SwipeToDismissBoxValue.EndToStart
-            val containerColor = if (isDismissing) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.6f)
-            val iconTint = if (isDismissing) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.7f)
-
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(IntrinsicSize.Min)
+    ) {
+        // Timeline vertical track & node
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier
+                .width(40.dp)
+                .fillMaxHeight()
+                .padding(top = 10.dp)
+        ) {
+            // Node dot (Material 3 Expressive timeline bullet)
             Box(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(containerColor)
-                    .padding(horizontal = 24.dp),
-                contentAlignment = Alignment.CenterEnd
+                    .padding(vertical = 4.dp)
+                    .size(16.dp),
+                contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = Icons.Default.Delete,
-                    contentDescription = if (isEn) "Remove from history" else "Eliminar del historial",
-                    tint = iconTint,
-                    modifier = Modifier.size(24.dp)
-                )
+                Surface(
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    modifier = Modifier.size(16.dp)
+                ) {}
+                Surface(
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(8.dp)
+                ) {}
             }
-        },
-        content = {
-            ElevatedCard(
-                shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.elevatedCardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-                ),
-                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { onClick() }
-            ) {
-                Row(
+
+            // Continuous vertical rail line
+            if (!isLastInGroup) {
+                Box(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    // Timeline badge
-                    Surface(
-                        shape = CircleShape,
-                        color = MaterialTheme.colorScheme.primaryContainer,
-                        modifier = Modifier.size(44.dp)
+                        .width(2.dp)
+                        .weight(1f)
+                        .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
+                )
+            } else {
+                Spacer(modifier = Modifier.weight(1f))
+            }
+        }
+
+        Spacer(modifier = Modifier.width(6.dp))
+
+        // History entry card
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .padding(bottom = 12.dp)
+        ) {
+            SwipeToDismissBox(
+                state = dismissState,
+                enableDismissFromStartToEnd = false,
+                enableDismissFromEndToStart = true,
+                backgroundContent = {
+                    val isDismissing = dismissState.targetValue == SwipeToDismissBoxValue.EndToStart
+                    val containerColor = if (isDismissing) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.6f)
+                    val iconTint = if (isDismissing) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.7f)
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(RoundedCornerShape(24.dp))
+                            .background(containerColor)
+                            .padding(horizontal = 20.dp),
+                        contentAlignment = Alignment.CenterEnd
                     ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = Icons.Default.CheckCircle,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(24.dp)
-                            )
-                        }
-                    }
-
-                    Column(modifier = Modifier.weight(1f)) {
-                        val localizedBook = AppStrings.getLocalizedBookName(historyItem.bookId, historyItem.bookName, isEn)
-                        Text(
-                            text = "$localizedBook ${historyItem.chapterNumber}",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Spacer(modifier = Modifier.height(2.dp))
-                        val dateTimeString = remember(historyItem.timestampRead) {
-                            val sdf = SimpleDateFormat("dd MMM yyyy, HH:mm", Locale.getDefault())
-                            sdf.format(Date(historyItem.timestampRead))
-                        }
-                        Text(
-                            text = if (isEn) "Read: $dateTimeString" else "Leído: $dateTimeString",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.outline
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = if (isEn) "Remove from history" else "Eliminar del historial",
+                            tint = iconTint,
+                            modifier = Modifier.size(22.dp)
                         )
                     }
-
-                    var showHistoryMenu by remember { mutableStateOf(false) }
-                    Box {
-                        IconButton(onClick = { showHistoryMenu = true }) {
-                            Icon(
-                                imageVector = Icons.Default.MoreVert,
-                                contentDescription = if (isEn) "Options" else "Opciones",
-                                tint = MaterialTheme.colorScheme.outline,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                        androidx.compose.material3.DropdownMenu(
-                            expanded = showHistoryMenu,
-                            onDismissRequest = { showHistoryMenu = false }
+                },
+                content = {
+                    ElevatedCard(
+                        shape = RoundedCornerShape(24.dp),
+                        colors = CardDefaults.elevatedCardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                        ),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onClick() }
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 14.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            androidx.compose.material3.DropdownMenuItem(
-                                text = {
-                                    Text(
-                                        if (isEn) "Remove from history" else "Eliminar del historial",
-                                        color = MaterialTheme.colorScheme.error
-                                    )
-                                },
-                                leadingIcon = {
-                                    Icon(
-                                        imageVector = Icons.Default.Delete,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.error
-                                    )
-                                },
-                                onClick = {
-                                    showHistoryMenu = false
-                                    onRequestDelete()
+                            Column(modifier = Modifier.weight(1f)) {
+                                val localizedBook = AppStrings.getLocalizedBookName(historyItem.bookId, historyItem.bookName, isEn)
+                                Text(
+                                    text = "$localizedBook ${historyItem.chapterNumber}",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                val dateTimeString = remember(historyItem.timestampRead, isEn) {
+                                    val locale = if (isEn) Locale.ENGLISH else Locale.forLanguageTag("es")
+                                    val sdf = SimpleDateFormat(if (isEn) "MMM dd, yyyy, HH:mm" else "dd MMM yyyy, HH:mm", locale)
+                                    sdf.format(Date(historyItem.timestampRead))
                                 }
-                            )
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Schedule,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.outline,
+                                        modifier = Modifier.size(13.dp)
+                                    )
+                                    Text(
+                                        text = dateTimeString,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.outline
+                                    )
+                                }
+                            }
+
+                            var showHistoryMenu by remember { mutableStateOf(false) }
+                            Box {
+                                IconButton(onClick = { showHistoryMenu = true }) {
+                                    Icon(
+                                        imageVector = Icons.Default.MoreVert,
+                                        contentDescription = if (isEn) "Options" else "Opciones",
+                                        tint = MaterialTheme.colorScheme.outline,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                                androidx.compose.material3.DropdownMenu(
+                                    expanded = showHistoryMenu,
+                                    onDismissRequest = { showHistoryMenu = false }
+                                ) {
+                                    androidx.compose.material3.DropdownMenuItem(
+                                        text = {
+                                            Text(
+                                                if (isEn) "Remove from history" else "Eliminar del historial",
+                                                color = MaterialTheme.colorScheme.error
+                                            )
+                                        },
+                                        leadingIcon = {
+                                            Icon(
+                                                imageVector = Icons.Default.Delete,
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.error
+                                            )
+                                        },
+                                        onClick = {
+                                            showHistoryMenu = false
+                                            onRequestDelete()
+                                        }
+                                    )
+                                }
+                            }
                         }
                     }
                 }
-            }
+            )
         }
-    )
+    }
 }
 
-private fun shareBookmark(context: Context, bookmark: BookmarkEntity) {
-    val notePart = if (!bookmark.customNote.isNullOrBlank()) "\nNota: ${bookmark.customNote}" else ""
-    val shareText = "\"${bookmark.verseText}\"\n— ${bookmark.bookName} ${bookmark.chapterNumber}:${bookmark.verseNumber}$notePart"
+private fun shareBookmark(context: Context, bookmark: BookmarkEntity, isEn: Boolean = false) {
+    val notePrefix = if (isEn) "Note" else "Nota"
+    val notePart = if (!bookmark.customNote.isNullOrBlank()) "\n$notePrefix: ${bookmark.customNote}" else ""
+    val rawBookName = bookmark.bookName
+    val bookId = (bookmark.verseId / 1000000).toInt()
+    val localizedBook = AppStrings.getLocalizedBookName(bookId, rawBookName, isEn)
+    val verseRef = if (bookmark.verseEndNumber > bookmark.verseNumber) {
+        "$localizedBook ${bookmark.chapterNumber}:${bookmark.verseNumber}-${bookmark.verseEndNumber}"
+    } else {
+        "$localizedBook ${bookmark.chapterNumber}:${bookmark.verseNumber}"
+    }
+    val shareText = "\"${bookmark.verseText}\"\n— $verseRef$notePart"
     val sendIntent = Intent().apply {
         action = Intent.ACTION_SEND
         putExtra(Intent.EXTRA_TEXT, shareText)
         type = "text/plain"
     }
-    context.startActivity(Intent.createChooser(sendIntent, "Compartir marcador"))
+    val chooserTitle = if (isEn) "Share bookmark" else "Compartir marcador"
+    context.startActivity(Intent.createChooser(sendIntent, chooserTitle))
 }
