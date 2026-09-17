@@ -146,6 +146,7 @@ fun GuideScreen(
             TopicVerseRef(50, "Filipenses", 4, 6, 7),
             TopicVerseRef(46, "1 Corintios", 16, 13, 13)
         )
+    }
     val forgivenessVerses = remember {
         listOf(
             TopicVerseRef(40, "Mateo", 6, 15, 15),
@@ -741,4 +742,6 @@ private fun TopicDetailSubpage(
         }
     }
 }
+
+
 

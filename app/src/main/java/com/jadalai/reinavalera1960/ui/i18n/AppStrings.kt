@@ -95,6 +95,21 @@ object AppStrings {
         else -> "Sin marcadores guardados aún."
     }
 
+    fun bookmarkSavedDate(dateString: String, lang: AppLanguage) = when (resolveLanguage(lang)) {
+        AppLanguage.ENGLISH -> "Saved on $dateString"
+        else -> "Guardado el $dateString"
+    }
+
+    fun bookmarkNoteLabel(lang: AppLanguage) = when (resolveLanguage(lang)) {
+        AppLanguage.ENGLISH -> "Note:"
+        else -> "Nota:"
+    }
+
+    fun shareBookmarkTitle(lang: AppLanguage) = when (resolveLanguage(lang)) {
+        AppLanguage.ENGLISH -> "Share bookmark"
+        else -> "Compartir marcador"
+    }
+
     fun emptyFavorites(lang: AppLanguage) = when (resolveLanguage(lang)) {
         AppLanguage.ENGLISH -> "No favorite verses yet.\nSelect a verse in the reader and tap \"Mark as Favorite\"."
         else -> "Sin versículos favoritos aún.\nSeleccione un versículo en el lector y pulse \"Marcar como Favorito\"."
