@@ -25,14 +25,17 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.RecordVoiceOver
 import androidx.compose.material.icons.filled.SelfImprovement
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Spa
 import androidx.compose.material.icons.filled.VolunteerActivism
 import androidx.compose.material.icons.filled.WbSunny
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
@@ -50,19 +53,35 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.jadalai.reinavalera1960.ui.reader.ReaderDisplayConfig
 import com.jadalai.reinavalera1960.data.local.entity.BookEntity
 import com.jadalai.reinavalera1960.ui.settings.AppLanguage
 import com.jadalai.reinavalera1960.ui.settings.BibleTranslation
 import com.jadalai.reinavalera1960.ui.theme.GoogleSansFlexTopBarFont
 import java.util.Calendar
 
+import androidx.activity.BackEventCompat
+import androidx.activity.compose.PredictiveBackHandler
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.hilt.navigation.compose.hiltViewModel
+import kotlinx.coroutines.flow.Flow
 
 data class TopicVerseRef(
     val bookId: Int,
@@ -89,6 +108,8 @@ fun GuideScreen(
     books: List<BookEntity>,
     currentLanguage: AppLanguage,
     translation: BibleTranslation = BibleTranslation.RVR1960,
+    displayConfig: ReaderDisplayConfig = ReaderDisplayConfig(),
+    viewModel: GuideViewModel = hiltViewModel(),
     onBack: (() -> Unit)? = null,
     onNavigateToChapter: (BookEntity, Int, Long?) -> Unit
 ) {
@@ -306,17 +327,22 @@ fun GuideScreen(
         )
     }
 
-    val activeTopic = selectedTopic
-    if (activeTopic != null) {
-        TopicDetailSubpage(
-            topic = activeTopic,
-            books = books,
-            isEnUI = isEnUI,
-            isKjv = isKjv,
-            onBack = { selectedTopic = null },
-            onNavigateToChapter = onNavigateToChapter
-        )
-        return
+    var backProgress by remember { mutableFloatStateOf(0f) }
+    var isPredictiveBackActive by remember { mutableStateOf(false) }
+
+    PredictiveBackHandler(enabled = selectedTopic != null) { progress: Flow<BackEventCompat> ->
+        try {
+            isPredictiveBackActive = true
+            progress.collect { backEvent ->
+                backProgress = backEvent.progress
+            }
+            selectedTopic = null
+        } catch (e: java.util.concurrent.CancellationException) {
+            // Cancelled
+        } finally {
+            isPredictiveBackActive = false
+            backProgress = 0f
+        }
     }
 
     data class DailyVerse(
@@ -364,8 +390,51 @@ fun GuideScreen(
         dailyVerses[dayOfYear % dailyVerses.size]
     }
     val targetDailyBook = books.find { it.id == todayVerse.bookId }
+    AnimatedContent(
+        targetState = selectedTopic,
+        transitionSpec = {
+            if (targetState != null) {
+                (slideInHorizontally { it } + fadeIn(animationSpec = tween(300)))
+                    .togetherWith(slideOutHorizontally { -it / 3 } + fadeOut(animationSpec = tween(300)))
+            } else {
+                (slideInHorizontally { -it / 3 } + fadeIn(animationSpec = tween(300)))
+                    .togetherWith(slideOutHorizontally { it } + fadeOut(animationSpec = tween(300)))
+            }
+        },
+        label = "guideTopicSubpageTransition",
+        modifier = Modifier.fillMaxSize()
+    ) { currentTopic ->
+        if (currentTopic != null) {
+            val scale = if (isPredictiveBackActive) 1f - (backProgress * 0.1f) else 1f
+            val cornerRadius = if (isPredictiveBackActive) (backProgress * 28).dp else 0.dp
+            val alpha = if (isPredictiveBackActive) 1f - (backProgress * 0.3f) else 1f
+            val translationX = if (isPredictiveBackActive) (backProgress * 60).dp else 0.dp
 
-    Scaffold(
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer {
+                        scaleX = scale
+                        scaleY = scale
+                        this.alpha = alpha
+                        this.translationX = translationX.toPx()
+                        clip = isPredictiveBackActive
+                        shape = RoundedCornerShape(cornerRadius)
+                    }
+            ) {
+                TopicDetailSubpage(
+                    topic = currentTopic,
+                    books = books,
+                    isEnUI = isEnUI,
+                    isKjv = isKjv,
+                    displayConfig = displayConfig,
+                    viewModel = viewModel,
+                    onBack = { selectedTopic = null },
+                    onNavigateToChapter = onNavigateToChapter
+                )
+            }
+        } else {
+            Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0),
         topBar = {
@@ -379,7 +448,14 @@ fun GuideScreen(
                 },
                 navigationIcon = {
                     if (onBack != null) {
-                        IconButton(onClick = onBack) {
+                        FilledTonalIconButton(
+                            onClick = onBack,
+                            colors = IconButtonDefaults.filledTonalIconButtonColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                contentColor = MaterialTheme.colorScheme.onSurface
+                            ),
+                            modifier = Modifier.padding(start = 8.dp)
+                        ) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                                 contentDescription = "Volver"
@@ -408,10 +484,10 @@ fun GuideScreen(
                 Spacer(modifier = Modifier.height(4.dp))
             }
 
-            // Daily Verse Highlight Card
+            // Daily Verse Expressive Hero Card
             item {
                 ElevatedCard(
-                    shape = RoundedCornerShape(24.dp),
+                    shape = RoundedCornerShape(28.dp),
                     colors = CardDefaults.elevatedCardColors(
                         containerColor = MaterialTheme.colorScheme.primaryContainer
                     ),
@@ -420,80 +496,109 @@ fun GuideScreen(
                         .fillMaxWidth()
                         .clickable {
                             if (targetDailyBook != null) {
-                                val dailyVerseId = targetDailyBook.id.toLong() * 1000000L + todayVerse.chapter * 1000L + todayVerse.verseNum
+                                val baseVerseId = targetDailyBook.id.toLong() * 1000000L + todayVerse.chapter * 1000L + todayVerse.verseNum
+                                val dailyVerseId = if (isKjv) 1000000000L + baseVerseId else baseVerseId
                                 onNavigateToChapter(targetDailyBook, todayVerse.chapter, dailyVerseId)
                             }
                         }
                 ) {
-                    Column(modifier = Modifier.padding(20.dp)) {
+                    Column(modifier = Modifier.padding(22.dp)) {
                         Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
                             Surface(
-                                shape = CircleShape,
-                                color = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(36.dp)
+                                shape = RoundedCornerShape(12.dp),
+                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.18f),
+                                modifier = Modifier.padding(bottom = 4.dp)
                             ) {
-                                Box(contentAlignment = Alignment.Center) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                                ) {
                                     Icon(
                                         imageVector = Icons.Default.AutoAwesome,
                                         contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.onPrimary,
-                                        modifier = Modifier.size(20.dp)
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                    Text(
+                                        text = if (isEnUI) "Verse of the day" else "Versículo del día",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.primary
                                     )
                                 }
                             }
-                            Column {
-                                Text(
-                                    text = if (isEnUI) "Verse of the day" else "Versículo del día",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                                val dailyBookName = targetDailyBook?.let {
-                                    com.jadalai.reinavalera1960.ui.i18n.AppStrings.getLocalizedBookName(it.id, it.name, isKjv)
-                                } ?: (if (isKjv) "Psalms" else "Salmos")
-                                Text(
-                                    text = "$dailyBookName ${todayVerse.chapter}:${todayVerse.verseNum}",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
-                                )
+
+                            val context = androidx.compose.ui.platform.LocalContext.current
+                            Surface(
+                                shape = CircleShape,
+                                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.4f),
+                                modifier = Modifier.size(36.dp)
+                            ) {
+                                IconButton(
+                                    onClick = {
+                                        val verseText = if (isKjv) todayVerse.textEn else todayVerse.textEs
+                                        com.jadalai.reinavalera1960.service.TextToSpeechManager.getInstance(context).speak(verseText, isKjv)
+                                    }
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.RecordVoiceOver,
+                                        contentDescription = "Leer versículo en voz alta",
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
                             }
                         }
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Text(
-                            text = "\"${if (isKjv) todayVerse.textEn else todayVerse.textEs}\"",
-                            style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = FontWeight.Medium,
-                            lineHeight = 24.sp,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
+
+                        val dailyBookName = targetDailyBook?.let {
+                            com.jadalai.reinavalera1960.ui.i18n.AppStrings.getLocalizedBookName(it.id, it.name, isKjv)
+                        } ?: (if (isKjv) "Psalms" else "Salmos")
+
                         Spacer(modifier = Modifier.height(10.dp))
+                        Text(
+                            text = if (isKjv) todayVerse.textEn else todayVerse.textEs,
+                            textAlign = displayConfig.justification.align,
+                            style = TextStyle(
+                                fontFamily = displayConfig.scriptureFont.fontFamily,
+                                fontSize = displayConfig.fontSize,
+                                lineHeight = displayConfig.lineHeight,
+                                fontWeight = displayConfig.textWeight.weight,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        )
+
+                        Spacer(modifier = Modifier.height(14.dp))
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = if (isEnUI) "Tap to open chapter →" else "Toca para abrir capítulo →",
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.SemiBold,
+                                text = "$dailyBookName ${todayVerse.chapter}:${todayVerse.verseNum}",
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.primary
                             )
-                            val context = androidx.compose.ui.platform.LocalContext.current
-                            IconButton(
-                                onClick = {
-                                    val verseText = if (isKjv) todayVerse.textEn else todayVerse.textEs
-                                    com.jadalai.reinavalera1960.service.TextToSpeechManager.getInstance(context).speak(verseText, isKjv)
-                                },
-                                modifier = Modifier.size(32.dp)
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
+                                Text(
+                                    text = if (isEnUI) "Read chapter" else "Leer capítulo",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
                                 Icon(
-                                    imageVector = Icons.Default.RecordVoiceOver,
-                                    contentDescription = "Leer versículo en voz alta",
+                                    imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
+                                    contentDescription = null,
                                     tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(20.dp)
+                                    modifier = Modifier.size(12.dp)
                                 )
                             }
                         }
@@ -504,7 +609,7 @@ fun GuideScreen(
             // Section Header for Guide
             item {
                 Text(
-                    text = if (isEnUI) "Guide by topics" else "Guía por temas",
+                    text = if (isEnUI) "By topics" else "Por temas",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onBackground,
@@ -514,17 +619,18 @@ fun GuideScreen(
 
             // Thematic Guide list
             items(guideItems) { guide ->
-                val firstVerse = guide.verses.firstOrNull()
-                val countVerses = guide.verses.size
-                val guideBook = books.find { it.id == firstVerse?.bookId }
-                val localizedTopicBookName = firstVerse?.let { vRef ->
-                    guideBook?.let {
-                        com.jadalai.reinavalera1960.ui.i18n.AppStrings.getLocalizedBookName(it.id, it.name, isKjv)
-                    } ?: com.jadalai.reinavalera1960.ui.i18n.AppStrings.getLocalizedBookName(vRef.bookId, vRef.bookNameEs, isKjv)
-                } ?: ""
+                val badgeColors = when (guide.id) {
+                    "love" -> MaterialTheme.colorScheme.tertiaryContainer to MaterialTheme.colorScheme.onTertiaryContainer
+                    "happiness" -> MaterialTheme.colorScheme.secondaryContainer to MaterialTheme.colorScheme.onSecondaryContainer
+                    "strength" -> MaterialTheme.colorScheme.primaryContainer to MaterialTheme.colorScheme.onPrimaryContainer
+                    "forgiveness" -> MaterialTheme.colorScheme.tertiaryContainer to MaterialTheme.colorScheme.onTertiaryContainer
+                    "salvation" -> MaterialTheme.colorScheme.primaryContainer to MaterialTheme.colorScheme.onPrimaryContainer
+                    "peace" -> MaterialTheme.colorScheme.secondaryContainer to MaterialTheme.colorScheme.onSecondaryContainer
+                    else -> MaterialTheme.colorScheme.primaryContainer to MaterialTheme.colorScheme.onPrimaryContainer
+                }
 
                 ElevatedCard(
-                    shape = RoundedCornerShape(20.dp),
+                    shape = RoundedCornerShape(24.dp),
                     colors = CardDefaults.elevatedCardColors(
                         containerColor = MaterialTheme.colorScheme.surfaceContainerLow
                     ),
@@ -540,48 +646,41 @@ fun GuideScreen(
                             Text(
                                 text = if (isEnUI) guide.titleEn else guide.titleEs,
                                 fontWeight = FontWeight.Bold,
-                                style = MaterialTheme.typography.titleMedium
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onSurface
                             )
-                        },
-                        supportingContent = {
-                            if (firstVerse != null) {
-                                Column {
-                                    Text(
-                                        text = if (countVerses > 1) {
-                                            if (isEnUI) "$countVerses verses" else "$countVerses versículos"
-                                        } else {
-                                            "$localizedTopicBookName ${firstVerse.chapter}:${if (firstVerse.startVerse == firstVerse.endVerse) "${firstVerse.startVerse}" else "${firstVerse.startVerse}-${firstVerse.endVerse}"}"
-                                        },
-                                        style = MaterialTheme.typography.labelMedium,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = MaterialTheme.colorScheme.primary
-                                    )
-                                }
-                            }
                         },
                         leadingContent = {
                             Surface(
-                                shape = CircleShape,
-                                color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                modifier = Modifier.size(44.dp)
+                                shape = RoundedCornerShape(16.dp),
+                                color = badgeColors.first,
+                                modifier = Modifier.size(48.dp)
                             ) {
                                 Box(contentAlignment = Alignment.Center) {
                                     Icon(
                                         imageVector = guide.icon,
                                         contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(22.dp)
+                                        tint = badgeColors.second,
+                                        modifier = Modifier.size(24.dp)
                                     )
                                 }
                             }
                         },
                         trailingContent = {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                                modifier = Modifier.size(16.dp)
-                            )
+                            Surface(
+                                shape = CircleShape,
+                                color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.6f),
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                }
+                            }
                         },
                         colors = ListItemDefaults.colors(containerColor = Color.Transparent)
                     )
@@ -593,6 +692,8 @@ fun GuideScreen(
             }
         }
     }
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -602,11 +703,11 @@ private fun TopicDetailSubpage(
     books: List<BookEntity>,
     isEnUI: Boolean,
     isKjv: Boolean,
+    displayConfig: ReaderDisplayConfig,
+    viewModel: GuideViewModel,
     onBack: () -> Unit,
     onNavigateToChapter: (BookEntity, Int, Long?) -> Unit
 ) {
-    androidx.activity.compose.BackHandler(onBack = onBack)
-
     val topicTitle = if (isEnUI) topic.titleEn else topic.titleEs
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
@@ -616,22 +717,21 @@ private fun TopicDetailSubpage(
         topBar = {
             LargeTopAppBar(
                 title = {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Icon(
-                            imageVector = topic.icon,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(28.dp)
-                        )
-                        Text(
-                            text = topicTitle,
-                            style = com.jadalai.reinavalera1960.ui.theme.LocalAppFonts.current.topBarTitle,
-                            color = MaterialTheme.colorScheme.onBackground
-                        )
-                    }
+                    Text(
+                        text = topicTitle,
+                        style = com.jadalai.reinavalera1960.ui.theme.LocalAppFonts.current.topBarTitle,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
                 },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    FilledTonalIconButton(
+                        onClick = onBack,
+                        colors = IconButtonDefaults.filledTonalIconButtonColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                            contentColor = MaterialTheme.colorScheme.onSurface
+                        ),
+                        modifier = Modifier.padding(start = 8.dp)
+                    ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Volver"
@@ -657,87 +757,191 @@ private fun TopicDetailSubpage(
         ) {
             item {
                 Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = if (isEnUI) "Verses about $topicTitle" else "Versículos de $topicTitle",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onBackground,
-                    modifier = Modifier.padding(bottom = 4.dp)
-                )
             }
 
             items(topic.verses) { vRef ->
                 val targetBook = books.find { it.id == vRef.bookId }
-                val bookName = targetBook?.let {
-                    com.jadalai.reinavalera1960.ui.i18n.AppStrings.getLocalizedBookName(it.id, it.name, isKjv)
-                } ?: com.jadalai.reinavalera1960.ui.i18n.AppStrings.getLocalizedBookName(vRef.bookId, vRef.bookNameEs, isKjv)
-
-                val verseRefText = if (vRef.startVerse == vRef.endVerse) {
-                    "$bookName ${vRef.chapter}:${vRef.startVerse}"
-                } else {
-                    "$bookName ${vRef.chapter}:${vRef.startVerse}-${vRef.endVerse}"
-                }
-
-                ElevatedCard(
-                    shape = RoundedCornerShape(18.dp),
-                    colors = CardDefaults.elevatedCardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-                    ),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable {
-                            if (targetBook != null) {
-                                val verseId = targetBook.id.toLong() * 1000000L + vRef.chapter * 1000L + vRef.startVerse
-                                onNavigateToChapter(targetBook, vRef.chapter, verseId)
-                            }
+                TopicVerseCard(
+                    vRef = vRef,
+                    targetBook = targetBook,
+                    isKjv = isKjv,
+                    isEnUI = isEnUI,
+                    displayConfig = displayConfig,
+                    viewModel = viewModel,
+                    onClick = {
+                        if (targetBook != null) {
+                            val baseVerseId = targetBook.id.toLong() * 1000000L + vRef.chapter * 1000L + vRef.startVerse
+                            val verseId = if (isKjv) 1000000000L + baseVerseId else baseVerseId
+                            onNavigateToChapter(targetBook, vRef.chapter, verseId)
                         }
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 14.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Surface(
-                                shape = CircleShape,
-                                color = MaterialTheme.colorScheme.primaryContainer,
-                                modifier = Modifier.size(36.dp)
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Icon(
-                                        imageVector = Icons.Default.Bookmark,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                }
-                            }
-                            Text(
-                                text = verseRefText,
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                        }
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                            modifier = Modifier.size(16.dp)
-                        )
                     }
-                }
+                )
             }
 
             item {
                 Spacer(modifier = Modifier.height(96.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun TopicVerseCard(
+    vRef: TopicVerseRef,
+    targetBook: BookEntity?,
+    isKjv: Boolean,
+    isEnUI: Boolean,
+    displayConfig: ReaderDisplayConfig,
+    viewModel: GuideViewModel,
+    onClick: () -> Unit
+) {
+    val translationStr = if (isKjv) "kjv" else "rvr1960"
+    val versesFlow = remember(vRef, translationStr) {
+        viewModel.getVersesForRange(vRef.bookId, vRef.chapter, vRef.startVerse, vRef.endVerse, translationStr)
+    }
+    val versesList by versesFlow.collectAsState(initial = emptyList())
+
+    val bookName = targetBook?.let {
+        com.jadalai.reinavalera1960.ui.i18n.AppStrings.getLocalizedBookName(it.id, it.name, isKjv)
+    } ?: com.jadalai.reinavalera1960.ui.i18n.AppStrings.getLocalizedBookName(vRef.bookId, vRef.bookNameEs, isKjv)
+
+    val verseRefText = if (vRef.startVerse == vRef.endVerse) {
+        "$bookName ${vRef.chapter}:${vRef.startVerse}"
+    } else {
+        "$bookName ${vRef.chapter}:${vRef.startVerse}-${vRef.endVerse}"
+    }
+
+    ElevatedCard(
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(18.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+                ) {
+                    Text(
+                        text = verseRefText,
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+                    )
+                }
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    val context = androidx.compose.ui.platform.LocalContext.current
+                    Surface(
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.5f),
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        IconButton(
+                            onClick = {
+                                if (versesList.isNotEmpty()) {
+                                    val content = if (versesList.size > 1) {
+                                        versesList.joinToString("\n") { "${it.verse_number}. ${it.content_text.trim()}" }
+                                    } else {
+                                        "\"${versesList.first().content_text.trim()}\""
+                                    }
+                                    val shareText = "$content\n— $verseRefText"
+                                    val sendIntent = android.content.Intent().apply {
+                                        action = android.content.Intent.ACTION_SEND
+                                        putExtra(android.content.Intent.EXTRA_TEXT, shareText)
+                                        type = "text/plain"
+                                    }
+                                    context.startActivity(
+                                        android.content.Intent.createChooser(
+                                            sendIntent,
+                                            if (isEnUI) "Share" else "Compartir"
+                                        )
+                                    )
+                                }
+                            },
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Share,
+                                contentDescription = if (isEnUI) "Share" else "Compartir",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
+
+                    Surface(
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.5f),
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                modifier = Modifier.size(14.dp)
+                            )
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+            if (versesList.isNotEmpty()) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    versesList.forEach { v ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.Top
+                        ) {
+                            Text(
+                                text = "${v.verse_number}",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(end = 8.dp, top = 3.dp)
+                            )
+                            Text(
+                                text = v.content_text.trim(),
+                                textAlign = displayConfig.justification.align,
+                                style = TextStyle(
+                                    fontFamily = displayConfig.scriptureFont.fontFamily,
+                                    fontSize = displayConfig.fontSize,
+                                    lineHeight = displayConfig.lineHeight,
+                                    fontWeight = displayConfig.textWeight.weight,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                ),
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+                }
+            } else {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(36.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
+                )
             }
         }
     }

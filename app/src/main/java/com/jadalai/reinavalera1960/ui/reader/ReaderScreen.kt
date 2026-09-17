@@ -130,20 +130,6 @@ fun ReaderScreen(
         }
     }
 
-    LaunchedEffect(temporaryHighlightedVerseId) {
-        if (temporaryHighlightedVerseId != null) {
-            // Flash 3 times: ON, OFF, ON, OFF, ON, OFF
-            repeat(3) {
-                flashStep = 1 // Highlight ON
-                kotlinx.coroutines.delay(260)
-                flashStep = 0 // Highlight OFF
-                kotlinx.coroutines.delay(200)
-            }
-            temporaryHighlightedVerseId = null
-            temporarySearchQuery = null
-        }
-    }
-
     // Screen Keep On Effect
     val activity = context as? Activity
     DisposableEffect(displayConfig.keepScreenOn) {
@@ -162,15 +148,27 @@ fun ReaderScreen(
     }
 
     LaunchedEffect(uiState.currentChapterId) {
-        listState.scrollToItem(0)
+        if (temporaryHighlightedVerseId == null && uiState.targetVerseIdToHighlight == null) {
+            listState.scrollToItem(0)
+        }
     }
 
     LaunchedEffect(temporaryHighlightedVerseId, verses) {
-        if (temporaryHighlightedVerseId != null && verses.isNotEmpty()) {
-            val targetIndex = verses.indexOfFirst { it.id == temporaryHighlightedVerseId }
+        val targetId = temporaryHighlightedVerseId
+        if (targetId != null && verses.isNotEmpty()) {
+            val targetIndex = verses.indexOfFirst { it.id == targetId }
             if (targetIndex >= 0) {
                 // Scroll to target verse item
                 listState.animateScrollToItem(targetIndex)
+                // Flash 3 times: ON, OFF, ON, OFF, ON, OFF
+                repeat(3) {
+                    flashStep = 1 // Highlight ON
+                    kotlinx.coroutines.delay(300)
+                    flashStep = 0 // Highlight OFF
+                    kotlinx.coroutines.delay(200)
+                }
+                temporaryHighlightedVerseId = null
+                temporarySearchQuery = null
             }
         }
     }
@@ -501,10 +499,10 @@ fun VerseItem(
     onDoubleClick: () -> Unit = {},
     onLongClick: () -> Unit
 ) {
-    val highlightColor = if (isSelected) {
-        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
-    } else if (config.showHighlights) {
-        when (verse.highlight_color) {
+    val targetBgColor = when {
+        isSelected -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+        isFlashActive -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f)
+        config.showHighlights -> when (verse.highlight_color) {
             "#FFF59D" -> Color(0x66FFF59D)
             "#A5D6A7" -> Color(0x66A5D6A7)
             "#90CAF9" -> Color(0x6690CAF9)
@@ -512,9 +510,13 @@ fun VerseItem(
             "#CE93D8" -> Color(0x66CE93D8)
             else -> Color.Transparent
         }
-    } else {
-        Color.Transparent
+        else -> Color.Transparent
     }
+    val animatedHighlightColor by androidx.compose.animation.animateColorAsState(
+        targetValue = targetBgColor,
+        animationSpec = androidx.compose.animation.core.tween(durationMillis = 200),
+        label = "verseHighlightAnim"
+    )
 
     val primaryColor = MaterialTheme.colorScheme.primary
     val flashBgColor = MaterialTheme.colorScheme.primaryContainer
@@ -555,7 +557,7 @@ fun VerseItem(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(8.dp))
-            .background(highlightColor)
+            .background(animatedHighlightColor)
             .combinedClickable(
                 onClick = onClick,
                 onDoubleClick = onDoubleClick,

@@ -189,6 +189,7 @@ fun MainAppShell(
                             books = books,
                             currentLanguage = currentLanguage,
                             translation = displayConfig.bibleTranslation,
+                            displayConfig = displayConfig,
                             onNavigateToChapter = { book, chapNum, verseId ->
                                 readerViewModel.selectBookChapterAndVerse(book, chapNum, verseId)
                                 onSelectNavigationIndex(1)
